@@ -58,8 +58,8 @@ export type CommandCentreData = {
   notifications?: AccountNotification[];
   operations?: { notes: ClientNote[]; sync_runs: SyncRun[]; support_tickets: SupportTicket[]; data_quality: { leads_without_campaign: number; leads_without_ad: number; unreviewed_leads: number; stale_integrations: number } };
   account_status?: {
-    cycle: { id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; campaign_filter: string | null } | null;
-    cycles: Array<{ id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; campaign_filter: string | null }>;
+    cycle: { id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; warm_transfer_goal: number; campaign_filter: string | null } | null;
+    cycles: Array<{ id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; warm_transfer_goal: number; campaign_filter: string | null }>;
     cycle_day: number; cycle_days: number; cycle_warnings: string[];
     hp: { score: number | null; goal_percent: number | null; recent_cpt: number | null; recent_spend: number; recent_transfers: number; projected_additional_transfers: number | null; projected_total_transfers: number | null; remaining_budget: number; provisional: boolean; window: { start: string; end: string }; warnings: string[] };
     warnings: Array<{ key: string; source: string; severity: string; message: string }>;

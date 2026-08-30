@@ -243,6 +243,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .connector-inline form p { margin:0; color:var(--muted); font-size:10px; }
 .connector-inline form button,.cycle-editor > button { padding:10px 13px; border:1.5px solid var(--ink); border-radius:10px 3px 10px 3px; color:white; background:var(--blue); box-shadow:3px 3px 0 var(--ink); font-size:11px; font-weight:850; cursor:pointer; }
 .connector-inline form button:disabled,.cycle-editor > button:disabled { opacity:.55; cursor:wait; }
+.cycle-confirmation { display:grid; gap:10px; margin-top:8px; padding:14px; border:1.5px solid var(--blue); border-radius:13px 5px 13px 5px; background:var(--blue-pale); }
+.cycle-confirmation h3 { margin:4px 0 0; font-size:19px; }
+.cycle-confirmation p { margin:5px 0 2px; color:var(--muted); font-size:10px; line-height:1.4; }
+.cycle-confirmation-actions { display:flex!important; grid-template-columns:none!important; justify-content:flex-end; gap:8px; padding-top:4px; }
+.cycle-confirmation-actions button { padding:9px 12px; border:1.5px solid var(--ink); border-radius:9px 3px 9px 3px; background:var(--blue); color:white; font-size:10px; font-weight:850; cursor:pointer; }
+.cycle-confirmation-actions button.text-button { color:var(--ink); background:white; }
+.cycle-confirmation-actions button:disabled { opacity:.55; cursor:wait; }
 .account-comparison .comparison-panel { margin:0; }
 .sidebar nav button.notification-button { position:relative; display:flex; align-items:center; gap:12px; min-height:47px; width:100%; padding:7px 10px; border:1px solid transparent; border-radius:12px 4px 12px 4px; color:#aaa89f; background:transparent; font:700 15px var(--sans); text-align:left; cursor:pointer; }
 .sidebar nav button.notification-button b { width:28px; height:28px; display:grid; place-items:center; border-radius:9px 3px 9px 3px; background:#2b2b28; color:#ccc9bf; }

@@ -12,7 +12,7 @@ the source of truth and supplies the dashboard data through Edge Functions.
 - Per-account performance, ROI, leads, outcomes, and GHL history
 - Meta campaign, ad set, and ad detail
 - DetailEngine advice-only media intelligence
-- Live account identity/lifecycle, sequential monthly cycles, onboarding, Meta/GHL integration management, and feedback routing
+- Live account identity/lifecycle, sequential monthly cycles with per-cycle budgets and transfer goals, onboarding, Meta/GHL integration management, and feedback routing
 - Supabase-backed internal account chat with attributed messages, replies, and reply notifications
 - Date-range lead and ad reports
 - Supabase Google authentication restricted to the DetailEngine email domain

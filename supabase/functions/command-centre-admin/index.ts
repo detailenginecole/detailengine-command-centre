@@ -82,14 +82,14 @@ Deno.serve(async (request) => {
       if (cycleId) {
         const existing = await rest(`reporting_periods?select=id&client_id=eq.${selectedClient?.id}&id=eq.${encodeURIComponent(cycleId)}&limit=1`);
         if (!existing?.length) return json({ error: "Cycle not found" }, 404);
-        await rest(`reporting_periods?id=eq.${encodeURIComponent(cycleId)}`, "PATCH", { starts_on: startsOn, ends_on: endsOn, status: clean(payload.status) || "active", monthly_budget: number(payload.monthly_budget), updated_at: new Date().toISOString() });
+        await rest(`reporting_periods?id=eq.${encodeURIComponent(cycleId)}`, "PATCH", { starts_on: startsOn, ends_on: endsOn, status: clean(payload.status) || "active", monthly_budget: number(payload.monthly_budget), warm_transfer_goal: number(payload.warm_transfer_goal), updated_at: new Date().toISOString() });
         return json({ ok: true, cycle_id: cycleId, starts_on: startsOn, ends_on: endsOn });
       }
       const cycles = await rest(`reporting_periods?select=id&client_id=eq.${selectedClient?.id}`);
       const label = `Cycle ${cycles.length + 1}`;
       const today = new Date().toISOString().slice(0, 10);
       const status = startsOn <= today && endsOn >= today ? "active" : startsOn > today ? "planned" : "completed";
-      const rows = await rest("reporting_periods", "POST", { client_id: selectedClient?.id, label, starts_on: startsOn, ends_on: endsOn, status, monthly_budget: number(payload.monthly_budget), campaign_filter: "" }, "return=representation");
+      const rows = await rest("reporting_periods", "POST", { client_id: selectedClient?.id, label, starts_on: startsOn, ends_on: endsOn, status, monthly_budget: number(payload.monthly_budget), warm_transfer_goal: number(payload.warm_transfer_goal), campaign_filter: "" }, "return=representation");
       return json({ ok: true, cycle: rows[0] }, 201);
     }
 
@@ -184,7 +184,7 @@ Deno.serve(async (request) => {
       rest("client_operating_profiles", "POST", { client_id: client.id, niche: clean(payload.niche) || "Auto detailing", general_location: clean(payload.general_location), communication_channel: "ghl", management_fee: number(payload.retainer_amount), campaign_filter: "" }),
       rest("client_monthly_terms", "POST", { client_id: client.id, month_start: currentMonth, retainer_amount: number(payload.retainer_amount), currency: "USD", source: "command_centre" }),
       rest("client_monthly_targets", "POST", { client_id: client.id, month_start: currentMonth, planned_ad_spend: number(payload.planned_ad_spend), lead_goal: 0, qualified_lead_goal: 0, warm_transfer_goal: number(payload.warm_transfer_goal), source: "command_centre" }),
-      rest("reporting_periods", "POST", { client_id: client.id, label: "Cycle 1", starts_on: currentMonth, ends_on: currentMonthEnd, status: "active", monthly_budget: number(payload.planned_ad_spend), campaign_filter: "" }),
+      rest("reporting_periods", "POST", { client_id: client.id, label: "Cycle 1", starts_on: currentMonth, ends_on: currentMonthEnd, status: "active", monthly_budget: number(payload.planned_ad_spend), warm_transfer_goal: number(payload.warm_transfer_goal), campaign_filter: "" }),
       rest("client_integrations", "POST", [
         { client_id: client.id, provider: "ghl", connection_key: "primary", external_account_id: clean(payload.ghl_location_id) || null, display_name: clean(payload.ghl_location_id) || "GHL setup required", status: payload.ghl_location_id ? "pending" : "disconnected", is_primary: true, config: {} },
         { client_id: client.id, provider: "meta", connection_key: "primary", display_name: "Meta setup required", status: "disconnected", is_primary: true, config: {} },

@@ -51,7 +51,7 @@ function healthProjection(base: Row, cycle: Row | null) {
   const recentTransfers = (base.leads || []).filter((lead: Row) => { const date = lead.outcome?.transferred_at?.slice(0, 10); return date && date >= cutoff && date <= cycleEnd; }).length;
   const spendToDate = num(base.performance?.actual_ad_spend);
   const transfersToDate = num(base.performance?.warm_transfers);
-  const goal = num(base.monthly_target?.warm_transfer_goal);
+  const goal = num(cycle?.warm_transfer_goal || base.monthly_target?.warm_transfer_goal);
   const budget = num(cycle?.monthly_budget || base.monthly_target?.planned_ad_spend);
   const remainingBudget = Math.max(0, budget - spendToDate);
   const recentCpt = recentTransfers > 0 ? recentSpend / recentTransfers : null;
@@ -88,6 +88,9 @@ Deno.serve(async (request) => {
       base = await loadBase(requestUrl, selectedCycle.starts_on, effectiveEnd);
     }
     selectedCycle = cycles.find((cycle: Row) => cycle.id === selectedCycle?.id) || null;
+    if (selectedCycle) {
+      base = { ...base, monthly_target: { ...(base.monthly_target || {}), planned_ad_spend: num(selectedCycle.monthly_budget), warm_transfer_goal: num(selectedCycle.warm_transfer_goal) } };
+    }
     const [rawIntegrations, notes, onboardingRuns, onboardingSteps, messages, notifications] = await Promise.all([
       rest(`client_integrations?select=id,provider,display_name,external_account_id,status,is_primary,last_synced_at,verified_at,last_error,updated_at,secret_ref&client_id=eq.${clientId}&order=provider.asc`),
       rest(`client_notes?select=id,category,body,created_by,created_at,updated_at&client_id=eq.${clientId}&order=created_at.desc&limit=150`),
