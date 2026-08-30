@@ -3,8 +3,9 @@
 
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AccountStatusWorkspace } from "./AccountStatusWorkspace";
 
-type Integration = { provider: string; status: string; display_name: string; external_account_id?: string | null; has_secret: boolean; last_synced_at?: string | null; last_error?: string | null };
+type Integration = { id?: string; provider: string; status: string; display_name: string; external_account_id?: string | null; has_secret: boolean; last_synced_at?: string | null; last_error?: string | null };
 type Performance = {
   range_start?: string; range_end?: string; month_start: string; month_end: string;
   total_leads: number; qualified_leads: number; unqualified_leads: number; warm_transfers: number;
@@ -52,6 +53,16 @@ export type CommandCentreData = {
   greg: { audits: GregAudit[]; recommendations: GregRecommendation[] }; daily_reports: DailyReport[];
   workspace: { current_user: { id: string; email: string; name?: string } | null; clients: WorkspaceClient[]; daily?: WorkspaceDaily[]; latest_reports?: DailyReport[] };
   operations?: { notes: ClientNote[]; sync_runs: SyncRun[]; support_tickets: SupportTicket[]; data_quality: { leads_without_campaign: number; leads_without_ad: number; unreviewed_leads: number; stale_integrations: number } };
+  account_status?: {
+    cycle: { id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; campaign_filter: string | null } | null;
+    cycles: Array<{ id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; campaign_filter: string | null }>;
+    cycle_day: number; cycle_days: number; cycle_warnings: string[];
+    hp: { score: number | null; goal_percent: number | null; recent_cpt: number | null; recent_spend: number; recent_transfers: number; projected_additional_transfers: number | null; projected_total_transfers: number | null; remaining_budget: number; provisional: boolean; window: { start: string; end: string }; warnings: string[] };
+    warnings: Array<{ key: string; source: string; severity: string; message: string }>;
+    aliases: Array<{ id: string; name: string; created_at: string }>;
+    integrations: Integration[];
+    onboarding: { runs: Array<{ id: string; status: string; started_at?: string | null; completed_at?: string | null }>; steps: Array<{ id: string; label: string; status: string; position: number }> };
+  };
   reports: { leads: string; ads: string };
 };
 
@@ -71,6 +82,7 @@ const rangeLabel = (start: string, end: string) => `${shortDate(`${start}T00:00:
 const isoToday = () => new Date().toISOString().slice(0, 10);
 const monthStart = (date = isoToday()) => `${date.slice(0, 7)}-01`;
 const daysInMonth = (date: string) => new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0)).getUTCDate();
+const addIsoDays = (value: string, days: number) => { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10); };
 const isRisk = (value: string) => ["risk", "critical", "poor", "unhealthy", "attention"].includes(String(value || "").toLowerCase());
 const statusText = (value: string) => String(value || "unknown").replaceAll("_", " ");
 
@@ -110,18 +122,6 @@ function RangePicker({ value, onApply, refreshing }: { value: { start: string; e
     setEnd(finish);
   };
   return <div className="range-control"><div className="range-presets"><button onClick={() => setPreset("mtd")}>MTD</button><button onClick={() => setPreset("5d")}>5D</button><button onClick={() => setPreset("30d")}>30D</button></div><label><span>FROM</span><input type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span>TO</span><input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label><button className="apply-range" disabled={refreshing || !start || !end || start > end} onClick={() => onApply({ start, end })}>{refreshing ? "Loading…" : "Apply"}</button></div>;
-}
-
-function CycleSelector({ value, onApply, refreshing }: { value: { start: string; end: string }; onApply: (range: { start: string; end: string }) => void; refreshing: boolean }) {
-  const currentCycle = isoToday().slice(0, 7);
-  const cycle = value.end.slice(0, 7);
-  const cycles = Array.from({ length: 24 }, (_, index) => { const date = new Date(`${currentCycle}-01T00:00:00Z`); date.setUTCMonth(date.getUTCMonth() - index); return date.toISOString().slice(0, 7); });
-  const applyCycle = (nextCycle: string) => {
-    const end = nextCycle === currentCycle ? isoToday() : `${nextCycle}-${String(daysInMonth(`${nextCycle}-01`)).padStart(2, "0")}`;
-    onApply({ start: `${nextCycle}-01`, end });
-  };
-  const label = (value: string) => new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}-01T00:00:00Z`));
-  return <label className="cycle-control"><span>CYCLE</span><select aria-label="Calendar cycle" value={cycle} disabled={refreshing} onChange={(event) => applyCycle(event.target.value)}>{cycles.map((item) => <option key={item} value={item}>{label(item)}{item === currentCycle ? " · MTD" : ""}</option>)}</select></label>;
 }
 
 export function CommandCentre({ initialData, dataUrl, screen }: { initialData: CommandCentreData; dataUrl: string; screen: Screen }) {
@@ -248,16 +248,17 @@ function AccountsPage({ data }: { data: CommandCentreData }) {
 }
 
 function AccountWorkspace({ data, refreshing, onRange, onReport, onSelectLead, onFeedback, onConnectors }: { data: CommandCentreData; refreshing: boolean; onRange: (range: { start: string; end: string }) => void; onReport: (type: "leads" | "ads") => void; onSelectLead: (lead: Lead) => void; onFeedback: () => void; onConnectors: () => void }) {
-  const [tab, setTab] = useState<AccountTab>("performance");
-  const tabs: Array<[AccountTab, string]> = [["performance", "Overview"], ["leads", `Leads (${data.leads.length})`], ["ads", "Ads Manager"]];
-  return <>
-    <div className="account-back"><Link href="/accounts">← All accounts</Link></div>
-    <PageHeader kicker={`${data.client.lifecycle_status.toUpperCase()} ACCOUNT`} title={cleanName(data.client.display_name)} copy={`${data.client.general_location || "Location pending"} · CSM: ${data.client.csm || "Unassigned"} · Media buyer: ${data.client.media_buyer || "Unassigned"}`} action={<div className="account-header-actions"><CycleSelector value={data.range} onApply={onRange} refreshing={refreshing} /><div className="report-buttons"><button onClick={onConnectors}>Connectors</button><button onClick={() => onReport("leads")}>Lead PDF</button><button onClick={() => onReport("ads")}>Ad PDF</button></div></div>} />
-    <nav className="account-tabs" aria-label="Account workspace">{tabs.map(([id, label]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}{id === "ads" && data.greg.recommendations.some((row) => !row.acknowledged_at) ? <i /> : null}</button>)}</nav>
-    {tab === "performance" && <PerformanceTab data={data} onTab={setTab} onSelectLead={onSelectLead} onFeedback={onFeedback} />}
-    {tab === "leads" && <LeadsTab data={data} onSelect={onSelectLead} />}
-    {tab === "ads" && <AdsManager data={data} />}
-  </>;
+  return <AccountStatusWorkspace
+    key={`${data.client.id}:${data.range.start}:${data.range.end}`}
+    data={data}
+    refreshing={refreshing}
+    onRange={onRange}
+    onConnectors={onConnectors}
+    onReport={onReport}
+    overview={(open) => <PerformanceTab data={data} onTab={(next) => open(next === "ads" ? "campaigns" : "leads")} onSelectLead={onSelectLead} onFeedback={onFeedback} />}
+    leads={<LeadsTab data={data} onSelect={onSelectLead} />}
+    campaigns={<AdsManager data={data} />}
+  />;
 }
 
 function PerformanceTab({ data, onTab, onSelectLead, onFeedback }: { data: CommandCentreData; onTab: (tab: AccountTab) => void; onSelectLead: (lead: Lead) => void; onFeedback: () => void }) {
@@ -267,14 +268,11 @@ function PerformanceTab({ data, onTab, onSelectLead, onFeedback }: { data: Comma
   const monthDays = daysInMonth(data.range.end);
   const elapsed = Math.min(100, day / monthDays * 100);
   const delivery = target?.warm_transfer_goal ? p.warm_transfers / target.warm_transfer_goal * 100 : 0;
-  const projected = day ? p.warm_transfers / day * monthDays : 0;
-  const recentStart = new Date(`${data.range.end}T00:00:00Z`); recentStart.setUTCDate(recentStart.getUTCDate() - 4);
-  const recentTransfers = data.leads.filter((lead) => lead.outcome && new Date(lead.outcome.transferred_at) >= recentStart).length;
-  const recentProjection = p.warm_transfers + (recentTransfers / 5) * Math.max(0, monthDays - day);
+  const hp = data.account_status?.hp;
   const latestAudit = data.greg.audits[0];
   const openFeedback = p.awaiting_feedback + p.in_sales_process + p.pending_payment;
   return <>
-    <section className="delivery-hero panel"><div><span className="kicker">MONTHLY DELIVERY PACE</span><h2>{p.warm_transfers} of {target?.warm_transfer_goal || "—"} warm transfers</h2><p>{delivery >= elapsed ? "Ahead of calendar pace" : "Behind calendar pace"} · full-month pace {projected.toFixed(1)} · recent 5-day pace {recentProjection.toFixed(1)}</p></div><div className="pace-score"><strong>{target?.warm_transfer_goal ? pct(delivery, 0) : "—"}</strong><span>of goal</span></div><div className="pace-track"><i style={{ width: `${Math.min(100, delivery)}%` }} /><b style={{ left: `${elapsed}%` }} title={`${elapsed.toFixed(0)}% of month elapsed`} /></div><footer><span>{p.warm_transfers} delivered</span><span>{elapsed.toFixed(0)}% of month elapsed</span><span>{target?.warm_transfer_goal ? Math.max(0, target.warm_transfer_goal - p.warm_transfers) : "—"} remaining</span></footer></section>
+    <section className="delivery-hero panel"><div><span className="kicker">CYCLE DELIVERY PACE</span><h2>{p.warm_transfers} of {target?.warm_transfer_goal || "—"} warm transfers</h2><p>{hp?.projected_total_transfers == null ? "Projection unavailable until budget, spend and transfer goal are present." : `${hp.projected_total_transfers.toFixed(1)} forecast from four-day CPT and remaining budget · ${pct(hp.goal_percent)} of goal`}</p></div><div className="pace-score"><strong>{hp?.score ?? "—"}</strong><span>HP score</span></div><div className="pace-track"><i style={{ width: `${Math.min(100, hp?.goal_percent || delivery)}%` }} /><b style={{ left: `${elapsed}%` }} title={`${elapsed.toFixed(0)}% of month elapsed`} /></div><footer><span>{p.warm_transfers} delivered</span><span>{hp?.recent_cpt == null ? "4-day CPT unavailable" : `${preciseMoney.format(hp.recent_cpt)} 4-day CPT`}</span><span>{money.format(hp?.remaining_budget || 0)} budget remaining</span></footer></section>
     <section className="metric-grid"><MetricCard label="Total leads" value={count.format(p.total_leads)} note={`${count.format(p.meta_leads)} recorded by Meta`} /><MetricCard label="Qualified" value={count.format(p.qualified_leads)} note={`${pct(p.qualification_rate)} qualification rate`} tone="blue" /><MetricCard label="Warm transfers" value={count.format(p.warm_transfers)} note={`${pct(p.transfer_rate)} of qualified leads`} tone="orange" /><MetricCard label="Speed to lead" value={p.average_speed_to_lead_minutes ? `${p.average_speed_to_lead_minutes.toFixed(1)}m` : "—"} note="Average first response" tone="yellow" /></section>
     <section className="dashboard-grid">
       <article className="panel span-7 roi-card"><div className="panel-head"><div><span className="kicker">REAL CLIENT ROI</span><h2>Collected revenue, not pipeline</h2></div><StatusPill status={p.roi_dollars >= 0 ? "positive" : "negative"} /></div><div className="roi-equation"><div><span>Collected revenue</span><strong>{money.format(p.collected_revenue)}</strong></div><b>−</b><div><span>Actual ad spend</span><strong>{money.format(p.actual_ad_spend)}</strong></div><b>−</b><div><span>Retainer</span><strong>{money.format(p.retainer_amount)}</strong></div><b>=</b><div className={p.roi_dollars >= 0 ? "positive" : "negative"}><span>Return</span><strong>{money.format(p.roi_dollars)}</strong><small>{pct(p.roi_percent)}</small></div></div><div className="outcome-strip"><div><strong>{p.closed_transfers}</strong><span>Closed</span></div><div><strong>{p.in_sales_process}</strong><span>Sales process</span></div><div><strong>{p.pending_payment}</strong><span>Pending payment</span></div><div><strong>{p.lost_transfers}</strong><span>Lost</span></div><div><strong>{p.awaiting_feedback}</strong><span>Awaiting</span></div></div></article>
@@ -314,7 +312,7 @@ function LeadTable({ leads, onSelect }: { leads: Lead[]; onSelect: (lead: Lead) 
 
 function AdsManager({ data }: { data: CommandCentreData }) {
   const [level, setLevel] = useState<"campaign" | "ad_set" | "ad">("campaign");
-  const [windowMode, setWindowMode] = useState<"month" | "5d">("month");
+  const [windowMode, setWindowMode] = useState<"cycle" | "quarter" | "daily">("cycle");
   const [leadSource, setLeadSource] = useState<"meta" | "ghl">("meta");
   const [selected, setSelected] = useState<string[]>([]); const [creative, setCreative] = useState<AdEntity | null>(null);
   const [showGregLog, setShowGregLog] = useState(false);
@@ -333,18 +331,28 @@ function AdsManager({ data }: { data: CommandCentreData }) {
   const selectedEntities = selected.map((id) => data.ad_entities.find((entity) => entity.id === id)).filter(Boolean) as AdEntity[];
   const selectedCampaigns = new Set(selectedEntities.filter((row) => row.entity_type === "campaign").map((row) => row.external_id));
   const selectedAdSets = new Set(selectedEntities.filter((row) => row.entity_type === "ad_set").map((row) => row.external_id));
+  const campaignFilter = String(data.account_status?.cycle?.campaign_filter || "").trim().toLowerCase();
   const eligible = data.ad_entity_performance.filter((row) => {
     if (row.entity_type !== level) return false;
     if (level === "ad_set" && selectedCampaigns.size) return selectedCampaigns.has(String(row.parent_external_id || ""));
     if (level === "ad" && selectedAdSets.size) return selectedAdSets.has(String(row.parent_external_id || ""));
     if (level === "ad" && selectedCampaigns.size) return selectedCampaigns.has(String(entityByExternal.get(String(row.parent_external_id || ""))?.parent_external_id || ""));
-    return true;
+    if (!campaignFilter) return true;
+    const entity = entityByExternal.get(row.external_id);
+    const parent = entityByExternal.get(String(entity?.parent_external_id || ""));
+    const grandparent = entityByExternal.get(String(parent?.parent_external_id || ""));
+    const campaign = row.entity_type === "campaign" ? row : row.entity_type === "ad_set" ? parent : grandparent;
+    return [campaign?.name, campaign?.external_id].some((value) => String(value || "").toLowerCase().includes(campaignFilter));
   });
-  const recentCutoff = new Date(`${data.range.end}T00:00:00Z`); recentCutoff.setUTCDate(recentCutoff.getUTCDate() - 4); const recentIso = recentCutoff.toISOString().slice(0, 10);
-  const cutoff = windowMode === "5d" ? recentIso : data.range.start;
+  const cycleStart = data.account_status?.cycle?.starts_on || data.range.start;
+  const cycleDays = data.account_status?.cycle_days || data.range.days;
+  const cycleDay = data.account_status?.cycle_day || data.range.days;
+  const quarterLength = Math.max(1, Math.ceil(cycleDays / 4));
+  const quarterStart = addIsoDays(cycleStart, Math.floor(Math.max(0, cycleDay - 1) / quarterLength) * quarterLength);
+  const cutoff = windowMode === "daily" ? data.range.end : windowMode === "quarter" ? quarterStart : cycleStart;
   const rowMetrics = eligible.map((base) => {
     const daily = data.ad_entity_daily_metrics.filter((item) => item.ad_entity_id === base.ad_entity_id && item.metric_date >= cutoff && item.metric_date <= data.range.end);
-    const useDaily = windowMode === "5d";
+    const useDaily = windowMode !== "cycle";
     const sum = (key: keyof AdEntityDaily) => daily.reduce((total, item) => total + Number(item[key] || 0), 0);
     const spend = useDaily ? sum("spend") : base.spend;
     const impressions = useDaily ? sum("impressions") : base.impressions;
@@ -373,7 +381,7 @@ function AdsManager({ data }: { data: CommandCentreData }) {
   return <>
     <section className="panel unified-ads-manager">
       <header className="ads-console-heading"><span className="ads-console-mark">DE</span><div><span className="kicker">DETAILENGINE MEDIA OPERATIONS</span><h2>Ads Manager <em>+ Greg</em></h2><p>Manage every Meta layer with the reason behind every recommendation.</p></div><b>ADVISE ONLY</b></header>
-      <div className="manager-topbar"><button className="meta-link" onClick={openMeta} disabled={!metaIntegration?.external_account_id}>ⓕ View selected in Meta ↗</button><span className="daily-budget">{money.format(configuredDaily)}/day <b>· {selected.length || levelCount("campaign")} selected</b></span><div className="manager-controls"><span>DATE RANGE:</span><div className="segmented"><button className={windowMode === "month" ? "active" : ""} onClick={() => setWindowMode("month")}>Month</button><button className={windowMode === "5d" ? "active" : ""} onClick={() => setWindowMode("5d")}>5 Days</button></div><span>LEAD DATA:</span><div className="segmented"><button className={leadSource === "meta" ? "active" : ""} onClick={() => setLeadSource("meta")}>Meta</button><button className={leadSource === "ghl" ? "active" : ""} onClick={() => setLeadSource("ghl")}>GHL</button></div></div></div>
+      <div className="manager-topbar"><button className="meta-link" onClick={openMeta} disabled={!metaIntegration?.external_account_id}>ⓕ View selected in Meta ↗</button><span className="daily-budget">{money.format(configuredDaily)}/day <b>· {selected.length || levelCount("campaign")} selected</b></span><div className="manager-controls"><span>CAMPAIGN VIEW:</span><div className="segmented"><button className={windowMode === "daily" ? "active" : ""} onClick={() => setWindowMode("daily")}>Daily</button><button className={windowMode === "quarter" ? "active" : ""} onClick={() => setWindowMode("quarter")}>Quarter</button><button className={windowMode === "cycle" ? "active" : ""} onClick={() => setWindowMode("cycle")}>Full cycle</button></div><span>LEAD DATA:</span><div className="segmented"><button className={leadSource === "meta" ? "active" : ""} onClick={() => setLeadSource("meta")}>Meta</button><button className={leadSource === "ghl" ? "active" : ""} onClick={() => setLeadSource("ghl")}>GHL</button></div></div></div>
       <GregGoals target={target} audit={latestAudit} />
       <div className="manager-levelbar"><div className="manager-levels">{(["campaign", "ad_set", "ad"] as const).map((item) => <button key={item} className={`${level === item ? "active" : ""} level-${item}`} onClick={() => setLevel(item)}>{item === "ad_set" ? "Ad Sets" : item === "ad" ? "Ads" : "Campaigns"} <b>{levelCount(item)}</b></button>)}</div><div className="greg-controls"><span>🤖 <b>Greg</b></span><i>Advise only</i><button onClick={() => setShowGregLog(!showGregLog)}>Greg&apos;s log</button></div></div>
       {selectedCampaigns.size > 0 && level !== "campaign" && <div className="selection-context">Showing children of {selectedCampaigns.size} selected campaign{selectedCampaigns.size === 1 ? "" : "s"}. <button onClick={() => setSelected((items) => items.filter((id) => !selectedEntities.find((entity) => entity.id === id && entity.entity_type === "campaign")))}>Clear campaign filter</button></div>}

@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { getDetailEngineUser, isAuthEnabled } from "../../lib/auth";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
 
-const endpoint = "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-demo";
+const endpoint = process.env.VERCEL_ENV === "production"
+  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-demo"
+  : "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-staging";
 
-async function allowed() {
-  return !isAuthEnabled() || Boolean(await getDetailEngineUser());
+async function accessToken() {
+  if (!isAuthEnabled()) return null;
+  if (!await getDetailEngineUser()) return undefined;
+  const supabase = await createSupabaseServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
 }
 
 export async function GET(request: Request) {
-  if (!await allowed()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const token = await accessToken();
+  if (token === undefined) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const source = new URL(request.url);
   const target = new URL(endpoint);
   for (const key of ["slug", "from", "to", "month"]) {
@@ -18,7 +26,10 @@ export async function GET(request: Request) {
   const secret = process.env.DETAILENGINE_SYNC_SECRET;
   const response = await fetch(target, {
     cache: "no-store",
-    headers: secret ? { "x-detailengine-secret": secret } : undefined,
+    headers: {
+      ...(secret ? { "x-detailengine-secret": secret } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   return new NextResponse(response.body, {
     status: response.status,
