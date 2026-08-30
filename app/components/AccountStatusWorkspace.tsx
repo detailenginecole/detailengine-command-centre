@@ -18,7 +18,7 @@ const tone = (score: number | null) => score == null ? "unknown" : score >= 90 ?
 const initials = (value: string) => value.split(" ").filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 
 export function AccountStatusWorkspace({
-  data, refreshing, onRange, overview, leads, comparison, campaigns, communications, onReport,
+  data, refreshing, onRange, overview, leads, comparison, campaigns, onReport,
 }: {
   data: CommandCentreData;
   refreshing: boolean;
@@ -27,7 +27,6 @@ export function AccountStatusWorkspace({
   leads: ReactNode;
   comparison: ReactNode;
   campaigns: ReactNode;
-  communications: ReactNode;
   onReport: (type: "leads" | "ads") => void;
 }) {
   const status = data.account_status;
@@ -156,7 +155,6 @@ export function AccountStatusWorkspace({
           <form onSubmit={postMessage}><textarea name="body" placeholder={replyTo ? "Write your reply…" : "Message the DetailEngine team…"} required /><button disabled={busy === "post_message"} type="submit">{busy === "post_message" ? "Sending…" : replyTo ? "Reply" : "Send"}</button></form>
           <small className="posting-as">Posting as <b>{data.workspace.current_user?.name || data.workspace.current_user?.email || "signed-in user"}</b></small>
         </article>
-        <div className="communications-stack">{communications}</div>
       </div>
     </section>
 

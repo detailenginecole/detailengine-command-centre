@@ -270,7 +270,6 @@ function AccountWorkspace({ data, refreshing, onRange, onReport, onSelectLead }:
     leads={<LeadsTab data={data} onSelect={onSelectLead} />}
     comparison={<MonthComparison months={data.months} />}
     campaigns={<AdsManager data={data} />}
-    communications={<CommunicationsPanel data={data} />}
   />;
 }
 
@@ -407,14 +406,6 @@ function IntelligenceGoals({ target, audit }: { target: MonthlyTarget | null; au
 
 function ActivityList({ items }: { items: Communication[] }) { return <div className="activity-list">{items.map((item) => <article key={item.id}><span className={item.lead_id ? "lead" : "client"}>{item.channel === "phone" ? "☎" : "✉"}</span><div><header><strong>{item.sender_name || (item.direction === "outbound" ? "DetailEngine" : "Contact")}</strong><StatusPill status={item.lead_id ? "lead" : "client"} /></header><p>{item.body_text || `${statusText(item.event_type)}${item.duration_seconds ? ` · ${Math.round(item.duration_seconds / 60)} min` : ""}`}</p><small>{dateTime(item.occurred_at)} · {item.direction}</small></div></article>)}{!items.length && <div className="empty-state">No communications in this range.</div>}</div>; }
 
-function CommunicationsPanel({ data }: { data: CommandCentreData }) {
-  const syncRuns = data.operations?.sync_runs.slice(0, 4) || [];
-  const tickets = data.operations?.support_tickets.slice(0, 3) || [];
-  return <>
-    <article className="panel communications-feed-panel"><div className="panel-head"><div><span className="kicker">GHL & CLIENT ACTIVITY</span><h2>External conversations</h2></div><span className="status-pill neutral">{data.communications.length} events</span></div><ActivityList items={data.communications} /></article>
-    <article className="panel communications-system-panel"><div className="panel-head"><div><span className="kicker">SYSTEM ACTIVITY</span><h2>Syncs and support</h2></div></div><div className="communications-system-list">{syncRuns.map((run) => <div key={run.id}><span>{statusText(run.sync_type)}</span><strong>{statusText(run.status)}</strong><small>{run.imported_count} imported · {run.error_count} errors · {dateTime(run.created_at)}</small></div>)}{tickets.map((ticket) => <div key={ticket.id}><span>{ticket.priority} support</span><strong>{ticket.subject}</strong><small>{statusText(ticket.status)} · {dateTime(ticket.created_at)}</small></div>)}{!syncRuns.length && !tickets.length ? <div className="empty-state">No system activity in this range.</div> : null}</div></article>
-  </>;
-}
 function ManagePage() {
   const [open, setOpen] = useState(false); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setMessage(""); const form = new FormData(event.currentTarget); const payload = Object.fromEntries(form.entries()); try { const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", ...payload }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not add account"); setMessage("Account created. Refreshing…"); setTimeout(() => window.location.assign(`/accounts/${body.client.slug}`), 700); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not add account"); } finally { setBusy(false); } }
