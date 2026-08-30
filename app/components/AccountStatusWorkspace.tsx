@@ -105,13 +105,6 @@ export function AccountStatusWorkspace({
       </div>
     </header>
 
-    <nav className="account-section-nav" aria-label="Account sections">
-      <a href="#account-overview">Overview</a>
-      <a href="#account-performance">Performance</a>
-      <a href="#account-ads-manager">Ads Manager</a>
-      <a href="#account-communications">Communications{nonPerformanceWarnings.length ? <i /> : null}</a>
-    </nav>
-
     <section className="account-section" id="account-overview">
       <header className="account-section-heading"><div><span className="kicker">01 · OVERVIEW</span><h2>What needs attention now</h2></div><p>Health, pace and operating readiness at a glance.</p></header>
       <section className="account-health-strip">
