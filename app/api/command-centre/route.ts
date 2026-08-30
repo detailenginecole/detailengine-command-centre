@@ -24,10 +24,12 @@ export async function GET(request: Request) {
     if (value) target.searchParams.set(key, value);
   }
   const secret = process.env.DETAILENGINE_SYNC_SECRET;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const response = await fetch(target, {
     cache: "no-store",
     headers: {
       ...(secret ? { "x-detailengine-secret": secret } : {}),
+      ...(publishableKey ? { apikey: publishableKey } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
