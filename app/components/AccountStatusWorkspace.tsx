@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, ReactNode, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useState } from "react";
 import type { CommandCentreData } from "./CommandCentre";
 
 type AccountStatus = NonNullable<CommandCentreData["account_status"]>;
@@ -13,7 +13,6 @@ const preciseMoney = new Intl.NumberFormat("en-US", { style: "currency", currenc
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(value.slice(0, 10) + "T00:00:00Z"));
 const today = () => new Date().toISOString().slice(0, 10);
 const tone = (score: number | null) => score == null ? "unknown" : score >= 90 ? "excellent" : score >= 70 ? "good" : score >= 50 ? "warning" : "critical";
-const healthyStatuses = new Set(["active", "connected", "healthy", "good", "ready"]);
 
 export function AccountStatusWorkspace({
   data,
@@ -49,13 +48,7 @@ export function AccountStatusWorkspace({
   const integrations = status?.integrations || data.client.integrations;
   const transferGoal = Number(data.monthly_target?.warm_transfer_goal || 0);
   const unresolvedOutcomes = performance.awaiting_feedback + performance.in_sales_process + performance.pending_payment;
-  const healthyIntegrations = integrations.filter((integration) => healthyStatuses.has(String(integration.status).toLowerCase())).length;
   const onboardingSteps = status?.onboarding.steps || [];
-  const completedOnboarding = onboardingSteps.filter((step) => (stepStates[step.id] || step.status) === "complete").length;
-  const nonPerformanceWarnings = useMemo(
-    () => (status?.warnings || []).filter((warning) => warning.source !== "hp"),
-    [status?.warnings],
-  );
   const selectedCycleId = status?.cycle?.id || "";
   const cycleProgress = status?.cycle_days ? Math.min(100, (status.cycle_day / status.cycle_days) * 100) : 0;
 
@@ -115,11 +108,8 @@ export function AccountStatusWorkspace({
         <div className="cycle-progress"><i style={{ width: cycleProgress + "%" }} /></div>
       </section>
 
-      {nonPerformanceWarnings.length > 0 ? <section className="account-warning-dashboard"><header><span>!</span><div><strong>{nonPerformanceWarnings.length} account-level system warning{nonPerformanceWarnings.length === 1 ? "" : "s"}</strong><small>Performance warnings are intentionally excluded here.</small></div></header><div>{nonPerformanceWarnings.map((warning) => <article key={warning.key}><b>{warning.source.replaceAll("_", " ")}</b><p>{warning.message}</p></article>)}</div></section> : null}
-
       <div className="account-overview-grid">
         <article className="panel overview-pulse"><div className="panel-head"><div><span className="kicker">OUTCOME PULSE</span><h2>{performance.warm_transfers} of {transferGoal || "—"} transfers delivered</h2></div></div><div className="overview-stat-grid"><div><span>Total leads</span><strong>{performance.total_leads}</strong></div><div><span>Qualified</span><strong>{performance.qualified_leads}</strong></div><div><span>Open outcomes</span><strong>{unresolvedOutcomes}</strong></div><div><span>Client return</span><strong>{money.format(performance.roi_dollars)}</strong></div></div></article>
-        <article className="panel overview-readiness"><div className="panel-head"><div><span className="kicker">OPERATING READINESS</span><h2>Systems and onboarding</h2></div><button className="text-button" type="button" onClick={() => setManageOpen(true)}>Manage</button></div><div className="readiness-list"><div><span>Integrations healthy</span><strong>{healthyIntegrations} / {integrations.length || 0}</strong></div><div><span>Onboarding complete</span><strong>{completedOnboarding} / {onboardingSteps.length || 0}</strong></div><div><span>Account aliases</span><strong>{aliases.length}</strong></div><div><span>Lifecycle</span><strong>{lifecycle}</strong></div></div></article>
       </div>
     </section>
 
