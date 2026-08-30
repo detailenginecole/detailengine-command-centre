@@ -227,3 +227,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .communications-stack { grid-template-columns:1fr; }.communications-system-panel { grid-column:auto; }
   .account-manage-drawer { width:100vw; padding:18px; }.account-manage-drawer > header { top:-18px; margin:-18px -18px 14px; padding:18px; }
 }
+.activity-feed > article.mine { border-color:var(--blue); background:var(--blue-pale); }
+.activity-feed blockquote { display:grid; gap:3px; margin:0 0 8px; padding:8px 10px; border-left:3px solid var(--orange); background:#f5efe4; color:var(--muted); font-size:10px; line-height:1.35; }
+.activity-feed blockquote b { color:var(--ink); }
+.activity-feed footer { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.activity-feed footer button { padding:2px 5px; border:0; background:transparent; color:var(--blue); font-size:10px; font-weight:850; cursor:pointer; }
+.chat-reply-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; padding:9px 11px; border:1px solid var(--orange); border-radius:9px; background:var(--orange-pale); color:#6b4428; font-size:11px; }
+.chat-reply-bar span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-reply-bar button { border:0; background:transparent; font-size:18px; cursor:pointer; }
+.posting-as { display:block; margin-top:-8px; color:var(--muted); font-size:10px; }
+.connector-inline form { display:grid; gap:10px; }
+.connector-inline form label,.cycle-editor > label { display:grid; gap:5px; }
+.connector-inline form label span,.cycle-editor > label span { color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; }
+.connector-inline input,.cycle-editor input,.cycle-editor select { width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:8px; background:white; font:12px var(--sans); }
+.connector-inline form p { margin:0; color:var(--muted); font-size:10px; }
+.connector-inline form button,.cycle-editor > button { padding:10px 13px; border:1.5px solid var(--ink); border-radius:10px 3px 10px 3px; color:white; background:var(--blue); box-shadow:3px 3px 0 var(--ink); font-size:11px; font-weight:850; cursor:pointer; }
+.connector-inline form button:disabled,.cycle-editor > button:disabled { opacity:.55; cursor:wait; }
+.account-comparison .comparison-panel { margin:0; }
+.sidebar nav button.notification-button { position:relative; display:flex; align-items:center; gap:12px; min-height:47px; width:100%; padding:7px 10px; border:1px solid transparent; border-radius:12px 4px 12px 4px; color:#aaa89f; background:transparent; font:700 15px var(--sans); text-align:left; cursor:pointer; }
+.sidebar nav button.notification-button b { width:28px; height:28px; display:grid; place-items:center; border-radius:9px 3px 9px 3px; background:#2b2b28; color:#ccc9bf; }
+.sidebar nav button.notification-button i { min-width:20px; height:20px; display:grid; place-items:center; margin-left:auto; border-radius:99px; color:white; background:var(--orange); font:800 10px var(--mono); }
+.notification-popover { position:absolute; z-index:20; left:20px; bottom:92px; width:min(340px,calc(100vw - 40px)); max-height:440px; overflow:auto; border:1px solid #504e48; border-radius:14px 5px 14px 5px; background:#22221f; box-shadow:0 16px 40px rgba(0,0,0,.36); }
+.notification-popover header { position:sticky; top:0; display:flex; justify-content:space-between; padding:13px; border-bottom:1px solid #44413b; background:#22221f; color:white; }
+.notification-popover header span { color:#aaa89f; font-size:10px; }
+.notification-popover > button { width:100%; display:grid; gap:4px; padding:12px 13px; border:0; border-bottom:1px solid #3a3935; background:transparent; color:#d7d4ca; text-align:left; cursor:pointer; }
+.notification-popover > button.unread { border-left:4px solid var(--orange); background:#2c2a24; }
+.notification-popover > button span,.notification-popover > button small { color:#aaa89f; font-size:10px; line-height:1.35; }
+.notification-popover > p { padding:18px; color:#aaa89f; font-size:11px; }

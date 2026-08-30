@@ -44,6 +44,8 @@ type WorkspaceDaily = { metric_date: string; spend: number; impressions: number;
 type ClientNote = { id: string; category: string | null; body: string; created_at: string };
 type SyncRun = { id: string; sync_type: string; status: string; imported_count: number; error_count: number; error_summary: string | null; created_at: string; completed_at: string | null };
 type SupportTicket = { id: string; subject: string; description: string | null; category: string | null; priority: string; status: string; submitted_by_name: string | null; created_at: string };
+type AccountMessage = { id: string; client_id: string; parent_message_id: string | null; author_user_id: string; author_name: string; body: string; created_at: string; mine: boolean; parent: { id: string; author_name: string; body: string } | null };
+type AccountNotification = { id: string; client_id: string; title: string; body: string; read_at: string | null; created_at: string; client: { slug: string; display_name: string } | null };
 
 export type CommandCentreData = {
   mode: string; generated_at: string; range: { start: string; end: string; days: number }; client: Client; selected_month: string; months: Performance[]; performance: Performance;
@@ -52,6 +54,8 @@ export type CommandCentreData = {
   ad_entities: AdEntity[]; ad_entity_daily_metrics: AdEntityDaily[]; ad_entity_performance: AdEntityPerformance[];
   greg: { audits: GregAudit[]; recommendations: GregRecommendation[] }; daily_reports: DailyReport[];
   workspace: { current_user: { id: string; email: string; name?: string } | null; clients: WorkspaceClient[]; daily?: WorkspaceDaily[]; latest_reports?: DailyReport[] };
+  account_chat?: { messages: AccountMessage[] };
+  notifications?: AccountNotification[];
   operations?: { notes: ClientNote[]; sync_runs: SyncRun[]; support_tickets: SupportTicket[]; data_quality: { leads_without_campaign: number; leads_without_ad: number; unreviewed_leads: number; stale_integrations: number } };
   account_status?: {
     cycle: { id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; campaign_filter: string | null } | null;
@@ -67,7 +71,6 @@ export type CommandCentreData = {
 };
 
 export type Screen = "overview" | "accounts" | "account" | "manage";
-type AccountTab = "performance" | "leads" | "ads";
 type LeadFilter = "all" | "transferred" | "qualified" | "unqualified" | "open";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -94,7 +97,18 @@ function StatusPill({ status }: { status: string }) {
   return <span className={`status-pill ${isRisk(status) ? "risk" : ["healthy", "active", "connected", "good", "scale"].includes(status.toLowerCase()) ? "good" : "neutral"}`}>{statusText(status)}</span>;
 }
 
-function Shell({ screen, children, user, mobileOpen, setMobileOpen }: { screen: Screen; children: React.ReactNode; user: CommandCentreData["workspace"]["current_user"]; mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) {
+function Shell({ screen, children, user, notifications, mobileOpen, setMobileOpen }: { screen: Screen; children: React.ReactNode; user: CommandCentreData["workspace"]["current_user"]; notifications: AccountNotification[]; mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) {
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [locallyRead, setLocallyRead] = useState<string[]>([]);
+  const items = notifications.map((item) => locallyRead.includes(item.id) ? { ...item, read_at: item.read_at || "just-read" } : item);
+  const unread = items.filter((item) => !item.read_at).length;
+  async function openNotification(item: AccountNotification) {
+    if (!item.read_at) {
+      await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark_notification_read", notification_id: item.id }) });
+      setLocallyRead((current) => current.includes(item.id) ? current : [...current, item.id]);
+    }
+    if (item.client?.slug) window.location.assign(`/accounts/${item.client.slug}#account-communications`);
+  }
   const nav = [
     { id: "overview", href: "/", label: "Company Overview", icon: "⌂" },
     { id: "accounts", href: "/accounts", label: "Accounts", icon: "◎" },
@@ -103,7 +117,8 @@ function Shell({ screen, children, user, mobileOpen, setMobileOpen }: { screen: 
   return <main className="app-shell">
     <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
       <Link className="brand" href="/"><span>DE</span><div><strong>DETAILENGINE</strong><small>COMMAND CENTRE</small></div></Link>
-      <nav aria-label="Main navigation">{nav.map((item) => <Link key={item.id} href={item.href} className={screen === item.id || (screen === "account" && item.id === "accounts") ? "active" : ""}><b>{item.icon}</b><span>{item.label}</span></Link>)}</nav>
+      <nav aria-label="Main navigation">{nav.map((item) => <Link key={item.id} href={item.href} className={screen === item.id || (screen === "account" && item.id === "accounts") ? "active" : ""}><b>{item.icon}</b><span>{item.label}</span></Link>)}<button className="notification-button" type="button" onClick={() => setNotificationOpen((value) => !value)}><b>♢</b><span>Notifications</span>{unread ? <i>{unread}</i> : null}</button></nav>
+      {notificationOpen ? <section className="notification-popover"><header><strong>Notifications</strong><span>{unread} unread</span></header>{items.length ? items.map((item) => <button key={item.id} className={item.read_at ? "" : "unread"} onClick={() => openNotification(item)}><strong>{item.title}</strong><span>{item.body}</span><small>{dateTime(item.created_at)}</small></button>) : <p>No reply notifications yet.</p>}</section> : null}
       <div className="sidebar-foot"><div className="user-avatar">{initials(user?.name || user?.email || "Preview User")}</div><div><strong>{user?.name || "Preview user"}</strong><small>{user?.email || "Google gate pending"}</small></div></div>
     </aside>
     {mobileOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
@@ -130,15 +145,15 @@ export function CommandCentre({ initialData, dataUrl, screen }: { initialData: C
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reportType, setReportType] = useState<"leads" | "ads" | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [connectorsOpen, setConnectorsOpen] = useState(false);
 
-  async function refresh(next: { start: string; end: string } = data.range) {
+  async function refresh(next: { start: string; end: string; cycleId?: string } = data.range) {
     setRefreshing(true);
     try {
       const url = new URL(dataUrl, window.location.origin);
       url.searchParams.set("slug", data.client.slug);
       url.searchParams.set("from", next.start);
       url.searchParams.set("to", next.end);
+      if (next.cycleId) url.searchParams.set("cycle_id", next.cycleId);
       url.searchParams.set("t", String(Date.now()));
       const response = await fetch(url.toString());
       if (!response.ok) throw new Error("Refresh failed");
@@ -148,16 +163,15 @@ export function CommandCentre({ initialData, dataUrl, screen }: { initialData: C
     } finally { setRefreshing(false); }
   }
 
-  return <Shell screen={screen} user={data.workspace.current_user} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}>
+  return <Shell screen={screen} user={data.workspace.current_user} notifications={data.notifications || []} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}>
     <div className="page-wrap">
       {screen === "overview" && <CompanyOverview data={data} refreshing={refreshing} onRange={refresh} />}
       {screen === "accounts" && <AccountsPage data={data} />}
       {screen === "manage" && <ManagePage />}
-      {screen === "account" && <AccountWorkspace data={data} refreshing={refreshing} onRange={refresh} onReport={setReportType} onSelectLead={setSelectedLead} onConnectors={() => setConnectorsOpen(true)} />}
+      {screen === "account" && <AccountWorkspace data={data} refreshing={refreshing} onRange={refresh} onReport={setReportType} onSelectLead={setSelectedLead} />}
     </div>
     {reportType && <ReportModal type={reportType} data={data} onClose={() => setReportType(null)} />}
     {selectedLead && <LeadDrawer lead={selectedLead} communications={data.communications.filter((item) => item.lead_id === selectedLead.id)} onClose={() => setSelectedLead(null)} />}
-    {connectorsOpen && <ConnectorsModal client={data.client} onClose={() => setConnectorsOpen(false)} onSaved={() => { setConnectorsOpen(false); refresh(); }} />}
   </Shell>;
 }
 
@@ -245,22 +259,22 @@ function AccountsPage({ data }: { data: CommandCentreData }) {
   </section>;
 }
 
-function AccountWorkspace({ data, refreshing, onRange, onReport, onSelectLead, onConnectors }: { data: CommandCentreData; refreshing: boolean; onRange: (range: { start: string; end: string }) => void; onReport: (type: "leads" | "ads") => void; onSelectLead: (lead: Lead) => void; onConnectors: () => void }) {
+function AccountWorkspace({ data, refreshing, onRange, onReport, onSelectLead }: { data: CommandCentreData; refreshing: boolean; onRange: (range: { start: string; end: string; cycleId?: string }) => Promise<void>; onReport: (type: "leads" | "ads") => void; onSelectLead: (lead: Lead) => void }) {
   return <AccountStatusWorkspace
-    key={`${data.client.id}:${data.range.start}:${data.range.end}`}
+    key={`${data.client.id}:${data.account_status?.cycle?.id || "calendar"}:${data.range.start}:${data.range.end}`}
     data={data}
     refreshing={refreshing}
     onRange={onRange}
-    onConnectors={onConnectors}
     onReport={onReport}
-    overview={(open) => <PerformanceTab data={data} onTab={(next) => open(next === "ads" ? "campaigns" : "leads")} onSelectLead={onSelectLead} />}
+    overview={(open) => <PerformanceTab data={data} onOpenAds={() => open("campaigns")} />}
     leads={<LeadsTab data={data} onSelect={onSelectLead} />}
+    comparison={<MonthComparison months={data.months} />}
     campaigns={<AdsManager data={data} />}
     communications={<CommunicationsPanel data={data} />}
   />;
 }
 
-function PerformanceTab({ data, onTab, onSelectLead }: { data: CommandCentreData; onTab: (tab: AccountTab) => void; onSelectLead: (lead: Lead) => void }) {
+function PerformanceTab({ data, onOpenAds }: { data: CommandCentreData; onOpenAds: () => void }) {
   const p = data.performance;
   const target = data.monthly_target;
   const day = Math.max(1, Number(data.range.end.slice(8, 10)));
@@ -273,17 +287,13 @@ function PerformanceTab({ data, onTab, onSelectLead }: { data: CommandCentreData
     <section className="metric-grid"><MetricCard label="Total leads" value={count.format(p.total_leads)} note={`${count.format(p.meta_leads)} recorded by Meta`} /><MetricCard label="Qualified" value={count.format(p.qualified_leads)} note={`${pct(p.qualification_rate)} qualification rate`} tone="blue" /><MetricCard label="Warm transfers" value={count.format(p.warm_transfers)} note={`${pct(p.transfer_rate)} of qualified leads`} tone="orange" /><MetricCard label="Speed to lead" value={p.average_speed_to_lead_minutes ? `${p.average_speed_to_lead_minutes.toFixed(1)}m` : "—"} note="Average first response" tone="yellow" /></section>
     <section className="dashboard-grid">
       <article className="panel span-12 roi-card"><div className="panel-head"><div><span className="kicker">REAL CLIENT ROI</span><h2>Collected revenue, not pipeline</h2></div><StatusPill status={p.roi_dollars >= 0 ? "positive" : "negative"} /></div><div className="roi-equation"><div><span>Collected revenue</span><strong>{money.format(p.collected_revenue)}</strong></div><b>−</b><div><span>Actual ad spend</span><strong>{money.format(p.actual_ad_spend)}</strong></div><b>−</b><div><span>Retainer</span><strong>{money.format(p.retainer_amount)}</strong></div><b>=</b><div className={p.roi_dollars >= 0 ? "positive" : "negative"}><span>Return</span><strong>{money.format(p.roi_dollars)}</strong><small>{pct(p.roi_percent)}</small></div></div><div className="outcome-strip"><div><strong>{p.closed_transfers}</strong><span>Closed</span></div><div><strong>{p.in_sales_process}</strong><span>Sales process</span></div><div><strong>{p.pending_payment}</strong><span>Pending payment</span></div><div><strong>{p.lost_transfers}</strong><span>Lost</span></div><div><strong>{p.awaiting_feedback}</strong><span>Awaiting</span></div></div></article>
-      <article className="panel span-12"><div className="panel-head"><div><span className="kicker">META PERFORMANCE</span><h2>Delivery and economics</h2></div><button className="text-button" onClick={() => onTab("ads")}>Open Ads Manager →</button></div><div className="stat-matrix"><SmallStat label="Spend" value={money.format(p.actual_ad_spend)} /><SmallStat label="CPL" value={p.cost_per_lead == null ? "—" : preciseMoney.format(p.cost_per_lead)} /><SmallStat label="CPQL" value={p.cost_per_qualified_lead == null ? "—" : preciseMoney.format(p.cost_per_qualified_lead)} /><SmallStat label="Cost / transfer" value={p.cost_per_transfer == null ? "—" : preciseMoney.format(p.cost_per_transfer)} /><SmallStat label="CTR" value={pct(p.ctr_percent, 2)} /><SmallStat label="CPC" value={p.cpc == null ? "—" : preciseMoney.format(p.cpc)} /><SmallStat label="CPM" value={p.cpm == null ? "—" : preciseMoney.format(p.cpm)} /><SmallStat label="Frequency" value={p.frequency == null ? "—" : p.frequency.toFixed(2)} /></div><MiniBars rows={data.ad_metrics} metric="spend" /></article>
-      <article className="panel span-6"><div className="panel-head"><div><span className="kicker">LATEST LEADS</span><h2>Lead quality and outcome</h2></div><button className="text-button" onClick={() => onTab("leads")}>Open all →</button></div><LeadMiniList leads={data.leads.slice(0, 5)} onSelect={onSelectLead} /></article>
-      <article className="panel span-6"><div className="panel-head"><div><span className="kicker">META CHANGELOG</span><h2>Grouped by day</h2></div></div><ChangeLog days={data.ad_changelog.slice(0, 5)} /></article>
-      <MonthComparison months={data.months} />
+      <article className="panel span-12"><div className="panel-head"><div><span className="kicker">META PERFORMANCE</span><h2>Delivery and economics</h2></div><button className="text-button" onClick={onOpenAds}>Open Ads Manager →</button></div><div className="stat-matrix"><SmallStat label="Spend" value={money.format(p.actual_ad_spend)} /><SmallStat label="CPL" value={p.cost_per_lead == null ? "—" : preciseMoney.format(p.cost_per_lead)} /><SmallStat label="CPQL" value={p.cost_per_qualified_lead == null ? "—" : preciseMoney.format(p.cost_per_qualified_lead)} /><SmallStat label="Cost / transfer" value={p.cost_per_transfer == null ? "—" : preciseMoney.format(p.cost_per_transfer)} /><SmallStat label="CTR" value={pct(p.ctr_percent, 2)} /><SmallStat label="CPC" value={p.cpc == null ? "—" : preciseMoney.format(p.cpc)} /><SmallStat label="CPM" value={p.cpm == null ? "—" : preciseMoney.format(p.cpm)} /><SmallStat label="Frequency" value={p.frequency == null ? "—" : p.frequency.toFixed(2)} /></div><MiniBars rows={data.ad_metrics} metric="spend" /></article>
     </section>
   </>;
 }
 
 function SmallStat({ label, value }: { label: string; value: string }) { return <div className="small-stat"><span>{label}</span><strong>{value}</strong></div>; }
 function MiniBars({ rows, metric }: { rows: DailyMetric[]; metric: "spend" | "leads" | "clicks" | "impressions" }) { const latest = rows.slice(-14); const max = Math.max(1, ...latest.map((row) => Number(row[metric] || 0))); return <div className="mini-bars">{latest.map((row) => <div key={row.metric_date} title={`${shortDate(row.metric_date)}: ${row[metric]}`}><i style={{ height: `${Math.max(4, Number(row[metric] || 0) / max * 100)}%` }} /><span>{shortDate(row.metric_date)}</span></div>)}</div>; }
-function LeadMiniList({ leads, onSelect }: { leads: Lead[]; onSelect: (lead: Lead) => void }) { return <div className="lead-mini-list">{leads.length ? leads.map((lead) => <button onClick={() => onSelect(lead)} key={lead.id}><span>{initials(lead.full_name)}</span><div><strong>{lead.full_name}</strong><small>{lead.source || "Unknown source"} · {shortDate(lead.submitted_at)}</small></div><StatusPill status={lead.outcome ? statusText(lead.outcome.status) : lead.qualification_status || "new"} /><b>→</b></button>) : <div className="empty-state">No leads in this range.</div>}</div>; }
 function ChangeLog({ days }: { days: ChangeDay[] }) { return <div className="change-log">{days.length ? days.map((day) => <div key={day.action_date}><time>{shortDate(day.action_date)}<b>{day.total_actions} actions</b></time><section>{day.actions.map((action, index) => <p key={`${action.action}-${index}`}><i />{action.summary}</p>)}</section></div>) : <div className="empty-state">No Meta changes in this range.</div>}</div>; }
 
 function MonthComparison({ months }: { months: Performance[] }) {
@@ -299,7 +309,8 @@ function MonthComparison({ months }: { months: Performance[] }) {
 function LeadsTab({ data, onSelect }: { data: CommandCentreData; onSelect: (lead: Lead) => void }) {
   const [filter, setFilter] = useState<LeadFilter>("all"); const [query, setQuery] = useState("");
   const filtered = useMemo(() => data.leads.filter((lead) => { const q = query.toLowerCase(); const matches = !q || [lead.full_name, lead.email, lead.phone, lead.source, lead.campaign].some((value) => String(value || "").toLowerCase().includes(q)); const status = String(lead.qualification_status || "").toLowerCase(); return matches && (filter === "all" || (filter === "transferred" && Boolean(lead.outcome)) || (filter === "qualified" && lead.is_qualified) || (filter === "unqualified" && ["unqualified", "disqualified", "not_qualified"].includes(status)) || (filter === "open" && (!lead.outcome || ["awaiting_feedback", "sales_process", "pending_payment"].includes(lead.outcome.status)))); }), [data.leads, filter, query]);
-  const weeks = data.leads.reduce<Record<string, Lead[]>>((acc, lead) => { const offset = Math.floor((Date.parse(lead.submitted_at.slice(0, 10)) - Date.parse(data.range.start)) / 86400000); const key = `Week ${Math.max(1, Math.floor(offset / 7) + 1)}`; acc[key] = [...(acc[key] || []), lead]; return acc; }, {});
+  const cycleDays = Math.max(1, Math.floor((Date.parse(data.range.end) - Date.parse(data.range.start)) / 86400000) + 1);
+  const weeks = data.leads.reduce<Record<string, Lead[]>>((acc, lead) => { const offset = Math.max(0, Math.floor((Date.parse(lead.submitted_at.slice(0, 10)) - Date.parse(data.range.start)) / 86400000)); const key = `Week ${Math.min(4, Math.floor(offset * 4 / cycleDays) + 1)}`; acc[key] = [...(acc[key] || []), lead]; return acc; }, {});
   return <section className="panel page-panel"><div className="panel-head large"><div><span className="kicker">LEAD BREAKDOWN</span><h2>Every lead. Every real outcome.</h2><p>{rangeLabel(data.range.start, data.range.end)}</p></div><label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search leads" /></label></div><div className="week-grid">{Object.entries(weeks).map(([week, leads]) => <div key={week}><span>{week}</span><strong>{leads.length}</strong><small>{leads.filter((row) => row.is_qualified).length} qualified · {leads.filter((row) => row.outcome).length} transferred</small></div>)}</div><div className="filter-tabs">{(["all", "transferred", "qualified", "unqualified", "open"] as LeadFilter[]).map((item) => <button className={filter === item ? "active" : ""} key={item} onClick={() => setFilter(item)}>{item}</button>)}</div><LeadTable leads={filtered} onSelect={onSelect} /></section>;
 }
 
@@ -308,9 +319,8 @@ function LeadTable({ leads, onSelect }: { leads: Lead[]; onSelect: (lead: Lead) 
 function AdsManager({ data }: { data: CommandCentreData }) {
   const [level, setLevel] = useState<"campaign" | "ad_set" | "ad">("campaign");
   const [windowMode, setWindowMode] = useState<"cycle" | "quarter" | "daily">("cycle");
-  const [leadSource, setLeadSource] = useState<"meta" | "ghl">("meta");
   const [selected, setSelected] = useState<string[]>([]); const [creative, setCreative] = useState<AdEntity | null>(null);
-  const [showGregLog, setShowGregLog] = useState(false);
+  const [showIntelligenceLog, setShowIntelligenceLog] = useState(false);
   const entityByExternal = useMemo(() => new Map(data.ad_entities.map((row) => [row.external_id, row])), [data.ad_entities]);
   useEffect(() => {
     let active = true;
@@ -355,7 +365,7 @@ function AdsManager({ data }: { data: CommandCentreData }) {
     const frequency = daily.length ? daily.reduce((total, item) => total + Number(item.frequency || 0), 0) / daily.length : base.frequency;
     const attributed = data.leads.filter((lead) => lead.submitted_at.slice(0, 10) >= cutoff && lead.submitted_at.slice(0, 10) <= data.range.end && (level === "campaign" ? lead.campaign_external_id === base.external_id : level === "ad_set" ? lead.ad_set_external_id === base.external_id : lead.ad_external_id === base.external_id));
     const metaLeads = useDaily ? sum("leads") : base.leads;
-    const leads = leadSource === "meta" ? metaLeads : attributed.length;
+    const leads = metaLeads;
     const transfers = attributed.filter((lead) => Boolean(lead.outcome)).length;
     const speeds = attributed.map((lead) => Number(lead.speed_to_lead_minutes)).filter((value) => Number.isFinite(value) && value >= 0).sort((a, b) => a - b);
     const medianSpeed = speeds.length ? speeds[Math.floor(speeds.length / 2)] : null;
@@ -375,24 +385,24 @@ function AdsManager({ data }: { data: CommandCentreData }) {
   const levelCount = (entityLevel: "campaign" | "ad_set" | "ad") => data.ad_entities.filter((row) => row.entity_type === entityLevel).length;
   return <>
     <section className="panel unified-ads-manager">
-      <header className="ads-console-heading"><span className="ads-console-mark">DE</span><div><span className="kicker">DETAILENGINE MEDIA OPERATIONS</span><h2>Ads Manager <em>+ Greg</em></h2><p>Manage every Meta layer with the reason behind every recommendation.</p></div><b>ADVISE ONLY</b></header>
-      <div className="manager-topbar"><button className="meta-link" onClick={openMeta} disabled={!metaIntegration?.external_account_id}>ⓕ View selected in Meta ↗</button><span className="daily-budget">{money.format(configuredDaily)}/day <b>· {selected.length || levelCount("campaign")} selected</b></span><div className="manager-controls"><span>CAMPAIGN VIEW:</span><div className="segmented"><button className={windowMode === "daily" ? "active" : ""} onClick={() => setWindowMode("daily")}>Daily</button><button className={windowMode === "quarter" ? "active" : ""} onClick={() => setWindowMode("quarter")}>Quarter</button><button className={windowMode === "cycle" ? "active" : ""} onClick={() => setWindowMode("cycle")}>Full cycle</button></div><span>LEAD DATA:</span><div className="segmented"><button className={leadSource === "meta" ? "active" : ""} onClick={() => setLeadSource("meta")}>Meta</button><button className={leadSource === "ghl" ? "active" : ""} onClick={() => setLeadSource("ghl")}>GHL</button></div></div></div>
-      <GregGoals target={target} audit={latestAudit} />
-      <div className="manager-levelbar"><div className="manager-levels">{(["campaign", "ad_set", "ad"] as const).map((item) => <button key={item} className={`${level === item ? "active" : ""} level-${item}`} onClick={() => setLevel(item)}>{item === "ad_set" ? "Ad Sets" : item === "ad" ? "Ads" : "Campaigns"} <b>{levelCount(item)}</b></button>)}</div><div className="greg-controls"><span>🤖 <b>Greg</b></span><i>Advise only</i><button onClick={() => setShowGregLog(!showGregLog)}>Greg&apos;s log</button></div></div>
+      <header className="ads-console-heading"><span className="ads-console-mark">DE</span><div><span className="kicker">DETAILENGINE MEDIA OPERATIONS</span><h2>Ads Manager <em>+ Intelligence</em></h2><p>Manage every Meta layer with the reason behind every recommendation.</p></div><b>ADVISE ONLY</b></header>
+      <div className="manager-topbar"><button className="meta-link" onClick={openMeta} disabled={!metaIntegration?.external_account_id}>ⓕ View selected in Meta ↗</button><span className="daily-budget">{money.format(configuredDaily)}/day <b>· {selected.length || levelCount("campaign")} selected</b></span><div className="manager-controls"><span>CAMPAIGN VIEW:</span><div className="segmented"><button className={windowMode === "daily" ? "active" : ""} onClick={() => setWindowMode("daily")}>Daily</button><button className={windowMode === "quarter" ? "active" : ""} onClick={() => setWindowMode("quarter")}>Quarter</button><button className={windowMode === "cycle" ? "active" : ""} onClick={() => setWindowMode("cycle")}>Full cycle</button></div></div></div>
+      <IntelligenceGoals target={target} audit={latestAudit} />
+      <div className="manager-levelbar"><div className="manager-levels">{(["campaign", "ad_set", "ad"] as const).map((item) => <button key={item} className={`${level === item ? "active" : ""} level-${item}`} onClick={() => setLevel(item)}>{item === "ad_set" ? "Ad Sets" : item === "ad" ? "Ads" : "Campaigns"} <b>{levelCount(item)}</b></button>)}</div><div className="greg-controls"><span>◆ <b>DetailEngine Intelligence</b></span><i>Advise only</i><button onClick={() => setShowIntelligenceLog(!showIntelligenceLog)}>Intelligence log</button></div></div>
       {selectedCampaigns.size > 0 && level !== "campaign" && <div className="selection-context">Showing children of {selectedCampaigns.size} selected campaign{selectedCampaigns.size === 1 ? "" : "s"}. <button onClick={() => setSelected((items) => items.filter((id) => !selectedEntities.find((entity) => entity.id === id && entity.entity_type === "campaign")))}>Clear campaign filter</button></div>}
       {selectedAdSets.size > 0 && level === "ad" && <div className="selection-context">Showing ads from {selectedAdSets.size} selected ad set{selectedAdSets.size === 1 ? "" : "s"}. <button onClick={() => setSelected((items) => items.filter((id) => !selectedEntities.find((entity) => entity.id === id && entity.entity_type === "ad_set")))}>Clear ad set filter</button></div>}
-      <div className="table-scroll"><table className={`ads-management-table entity-${level}`}><thead><tr><th><input type="checkbox" checked={allVisibleSelected} onChange={() => setSelected((items) => allVisibleSelected ? items.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...items, ...visibleIds])))} aria-label="Select all visible" /></th><th>Status</th><th>{level === "campaign" ? "Campaign" : level === "ad_set" ? "Ad set" : "Ad"}</th><th>Results</th><th>CPR</th><th>Leads</th><th>CPL</th><th>Spend</th><th>CPC</th><th>CTR</th><th>Freq</th><th>CPM</th><th>Clicks</th><th>Survey</th><th>Med S2L</th></tr></thead><tbody>{rows.map((row) => { const entity = entityByExternal.get(row.external_id); const config = entity?.config || {}; const rec = recByEntity.get(row.external_id); const dailyBudget = Number(config.daily_budget_cents || 0) ? Number(config.daily_budget_cents) / 100 : Number(config.daily_budget || config.dailyBudget || 0); const children = data.ad_entities.filter((item) => item.parent_external_id === row.external_id); const activeChildren = children.filter((item) => String(item.effective_status || item.status).toLowerCase() === "active").length; const detail = level === "campaign" ? `${children.filter((item) => item.entity_type === "ad_set").length} ad sets · ${activeChildren}/${children.length} active` : level === "ad_set" ? `${children.length} ads · ${activeChildren}/${children.length} active` : String(config.headline || config.primary_text || "Creative"); const sentences = (rec?.reason || "Greg will grade this entity after the next media audit.").split(/(?<=[.!?])\s+/).filter(Boolean); return <Fragment key={row.ad_entity_id}><tr className="entity-row"><td><input type="checkbox" checked={selected.includes(row.ad_entity_id)} onChange={() => toggle(row.ad_entity_id)} aria-label={`Select ${row.name}`} /></td><td><span className={`entity-status ${String(row.effective_status || row.status).toLowerCase() === "active" ? "active" : "paused"}`}>{statusText(row.effective_status || row.status || "unknown")}</span></td><td><button className="entity-name" onClick={() => level === "ad" && setCreative(entity || null)}>{level === "ad" && typeof config.thumbnail_url === "string" && <img src={config.thumbnail_url} alt="" />}<span><strong>{row.name}</strong><small>{detail}{dailyBudget ? ` · ${money.format(dailyBudget)}/day` : ""}</small></span></button></td><td><strong>{row.warm_transfers}</strong></td><td>{row.cost_per_transfer == null ? "—" : preciseMoney.format(row.cost_per_transfer)}</td><td><strong>{row.leads}</strong><small>{leadSource.toUpperCase()}</small></td><td className={row.cost_per_lead && target?.target_cpl && row.cost_per_lead > target.target_cpl ? "bad" : ""}>{row.cost_per_lead == null ? "—" : preciseMoney.format(row.cost_per_lead)}</td><td><strong>{money.format(row.spend)}</strong><div className="spend-share"><i style={{ width: `${totalSpend ? row.spend / totalSpend * 100 : 0}%` }} /></div></td><td>{row.cpc == null ? "—" : preciseMoney.format(row.cpc)}</td><td>{pct(row.ctr_percent, 2)}</td><td>{row.frequency == null ? "—" : row.frequency.toFixed(2)}</td><td>{row.cpm == null ? "—" : preciseMoney.format(row.cpm)}</td><td>{count.format(row.clicks)}</td><td>{pct(row.survey, 2)}</td><td>{row.medianSpeed == null ? "—" : `${row.medianSpeed.toFixed(0)}m`}</td></tr><tr className={`greg-decision-row verdict-${rec?.verdict || "hold"}`}><td colSpan={15}><div><span className={`verdict verdict-${rec?.verdict || "hold"}`}>🤖 {String(rec?.evidence?.greg_label || rec?.verdict || "Watch")}</span>{sentences.length > 1 && level !== "ad" ? <ul>{sentences.map((sentence) => <li key={sentence}>{sentence}</li>)}</ul> : <p>{sentences.join(" ")}</p>}</div></td></tr></Fragment>; })}</tbody></table>{!rows.length && <div className="empty-state">No {statusText(level)} data matches the current selection.</div>}</div>
-      {showGregLog && <div className="greg-log-inline">{data.greg.audits.map((row) => <article key={row.id}><time>{shortDate(row.audit_date)}</time><StatusPill status={row.health_status} /><div><strong>{row.headline}</strong><p>{row.summary}</p></div></article>)}{!data.greg.audits.length && <div className="empty-state">No Greg audits yet.</div>}</div>}
+      <div className="table-scroll"><table className={`ads-management-table entity-${level}`}><thead><tr><th><input type="checkbox" checked={allVisibleSelected} onChange={() => setSelected((items) => allVisibleSelected ? items.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...items, ...visibleIds])))} aria-label="Select all visible" /></th><th>Status</th><th>{level === "campaign" ? "Campaign" : level === "ad_set" ? "Ad set" : "Ad"}</th><th>Results</th><th>CPR</th><th>Leads</th><th>CPL</th><th>Spend</th><th>CPC</th><th>CTR</th><th>Freq</th><th>CPM</th><th>Clicks</th><th>Survey</th><th>Med S2L</th></tr></thead><tbody>{rows.map((row) => { const entity = entityByExternal.get(row.external_id); const config = entity?.config || {}; const rec = recByEntity.get(row.external_id); const dailyBudget = Number(config.daily_budget_cents || 0) ? Number(config.daily_budget_cents) / 100 : Number(config.daily_budget || config.dailyBudget || 0); const children = data.ad_entities.filter((item) => item.parent_external_id === row.external_id); const activeChildren = children.filter((item) => String(item.effective_status || item.status).toLowerCase() === "active").length; const detail = level === "campaign" ? `${children.filter((item) => item.entity_type === "ad_set").length} ad sets · ${activeChildren}/${children.length} active` : level === "ad_set" ? `${children.length} ads · ${activeChildren}/${children.length} active` : String(config.headline || config.primary_text || "Creative"); const sentences = (rec?.reason || "DetailEngine Intelligence will grade this entity after the next media audit.").split(/(?<=[.!?])\s+/).filter(Boolean); return <Fragment key={row.ad_entity_id}><tr className="entity-row"><td><input type="checkbox" checked={selected.includes(row.ad_entity_id)} onChange={() => toggle(row.ad_entity_id)} aria-label={`Select ${row.name}`} /></td><td><span className={`entity-status ${String(row.effective_status || row.status).toLowerCase() === "active" ? "active" : "paused"}`}>{statusText(row.effective_status || row.status || "unknown")}</span></td><td><button className="entity-name" onClick={() => level === "ad" && setCreative(entity || null)}>{level === "ad" && typeof config.thumbnail_url === "string" && <img src={config.thumbnail_url} alt="" />}<span><strong>{row.name}</strong><small>{detail}{dailyBudget ? ` · ${money.format(dailyBudget)}/day` : ""}</small></span></button></td><td><strong>{row.warm_transfers}</strong></td><td>{row.cost_per_transfer == null ? "—" : preciseMoney.format(row.cost_per_transfer)}</td><td><strong>{row.leads}</strong><small>META</small></td><td className={row.cost_per_lead && target?.target_cpl && row.cost_per_lead > target.target_cpl ? "bad" : ""}>{row.cost_per_lead == null ? "—" : preciseMoney.format(row.cost_per_lead)}</td><td><strong>{money.format(row.spend)}</strong><div className="spend-share"><i style={{ width: `${totalSpend ? row.spend / totalSpend * 100 : 0}%` }} /></div></td><td>{row.cpc == null ? "—" : preciseMoney.format(row.cpc)}</td><td>{pct(row.ctr_percent, 2)}</td><td>{row.frequency == null ? "—" : row.frequency.toFixed(2)}</td><td>{row.cpm == null ? "—" : preciseMoney.format(row.cpm)}</td><td>{count.format(row.clicks)}</td><td>{pct(row.survey, 2)}</td><td>{row.medianSpeed == null ? "—" : `${row.medianSpeed.toFixed(0)}m`}</td></tr><tr className={`greg-decision-row verdict-${rec?.verdict || "hold"}`}><td colSpan={15}><div><span className={`verdict verdict-${rec?.verdict || "hold"}`}>🤖 {String(rec?.evidence?.greg_label || rec?.verdict || "Watch")}</span>{sentences.length > 1 && level !== "ad" ? <ul>{sentences.map((sentence) => <li key={sentence}>{sentence}</li>)}</ul> : <p>{sentences.join(" ")}</p>}</div></td></tr></Fragment>; })}</tbody></table>{!rows.length && <div className="empty-state">No {statusText(level)} data matches the current selection.</div>}</div>
+      {showIntelligenceLog && <div className="greg-log-inline">{data.greg.audits.map((row) => <article key={row.id}><time>{shortDate(row.audit_date)}</time><StatusPill status={row.health_status} /><div><strong>{row.headline}</strong><p>{row.summary}</p></div></article>)}{!data.greg.audits.length && <div className="empty-state">No media intelligence audits yet.</div>}</div>}
     </section>
     <section className="dashboard-grid"><article className="panel span-7"><div className="panel-head"><div><span className="kicker">DAILY DETAIL</span><h2>Account performance by day</h2></div></div><div className="table-scroll"><table className="data-table compact"><thead><tr><th>Date</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>Meta leads</th><th>CTR</th><th>CPC</th><th>Frequency</th></tr></thead><tbody>{data.ad_metrics.map((row) => <tr key={row.metric_date}><td>{shortDate(row.metric_date)}</td><td>{money.format(row.spend)}</td><td>{count.format(row.impressions)}</td><td>{row.clicks}</td><td>{row.leads}</td><td>{pct(row.link_ctr, 2)}</td><td>{row.link_cpc == null ? "—" : preciseMoney.format(row.link_cpc)}</td><td>{row.frequency == null ? "—" : Number(row.frequency).toFixed(2)}</td></tr>)}</tbody></table></div></article><article className="panel span-5"><div className="panel-head"><div><span className="kicker">META CHANGELOG</span><h2>Recent changes</h2></div></div><ChangeLog days={data.ad_changelog} /></article></section>
     {creative && <CreativeDrawer entity={creative} onClose={() => setCreative(null)} />}
   </>;
 }
 
-function GregGoals({ target, audit }: { target: MonthlyTarget | null; audit?: GregAudit }) {
+function IntelligenceGoals({ target, audit }: { target: MonthlyTarget | null; audit?: GregAudit }) {
   const goal = Number(target?.target_cpl || 0); const mode = String(audit?.metrics?.operating_mode || "standard"); const pace = Number(audit?.metrics?.transfer_pace || 0) * 100; const cpcLimit = Number(audit?.metrics?.cpc_limit || 4.2);
   const stage = (label: string, leads: string, multiple: number, tone: string, copy: string) => <div className={tone}><header><b>{label}</b><span>{leads}</span></header><small>{goal ? `${copy} ${preciseMoney.format(goal * multiple)}` : "Set a CPL target"}</small></div>;
-  return <section className="greg-goals"><header><div><span className="greg-mark">G</span><span><b>Greg&apos;s guardrails</b><small>DetailEngine media intelligence</small></span><i>{statusText(mode)} · {pace ? `${pace.toFixed(0)}% of pace` : "pace pending"}</i></div><small>More proven leads earn more room to spend.</small></header><div className="greg-goal-grid"><div><b>COST PER LEAD</b><strong>{goal ? `≤ ${money.format(goal)}` : "Not set"}</strong><small>Primary decision metric</small></div><div><b>COST PER CLICK</b><strong>≤ {preciseMoney.format(cpcLimit)}</strong><small>Only used for no-lead ads in Struggling mode</small></div><div><b>MODE</b><strong>{statusText(mode)}</strong><small>CPL first · CPC is conditional</small></div>{stage("Zero", "0 leads", 1.2, "zero", "Pause near")}{stage("One", "1 lead", 1.8, "one", "Pause at CPL ≥")}{stage("Low", "2–3 leads", 1.4, "low", "Pause at CPL ≥")}{stage("Proven", "4+ leads", 1.375, "proven", "Pause at CPL ≥")}</div></section>;
+  return <section className="greg-goals"><header><div><span className="greg-mark">DE</span><span><b>Media intelligence guardrails</b><small>DetailEngine media intelligence</small></span><i>{statusText(mode)} · {pace ? `${pace.toFixed(0)}% of pace` : "pace pending"}</i></div><small>More proven leads earn more room to spend.</small></header><div className="greg-goal-grid"><div><b>COST PER LEAD</b><strong>{goal ? `≤ ${money.format(goal)}` : "Not set"}</strong><small>Primary decision metric</small></div><div><b>COST PER CLICK</b><strong>≤ {preciseMoney.format(cpcLimit)}</strong><small>Only used for no-lead ads in Struggling mode</small></div><div><b>MODE</b><strong>{statusText(mode)}</strong><small>CPL first · CPC is conditional</small></div>{stage("Zero", "0 leads", 1.2, "zero", "Pause near")}{stage("One", "1 lead", 1.8, "one", "Pause at CPL ≥")}{stage("Low", "2–3 leads", 1.4, "low", "Pause at CPL ≥")}{stage("Proven", "4+ leads", 1.375, "proven", "Pause at CPL ≥")}</div></section>;
 }
 
 function ActivityList({ items }: { items: Communication[] }) { return <div className="activity-list">{items.map((item) => <article key={item.id}><span className={item.lead_id ? "lead" : "client"}>{item.channel === "phone" ? "☎" : "✉"}</span><div><header><strong>{item.sender_name || (item.direction === "outbound" ? "DetailEngine" : "Contact")}</strong><StatusPill status={item.lead_id ? "lead" : "client"} /></header><p>{item.body_text || `${statusText(item.event_type)}${item.duration_seconds ? ` · ${Math.round(item.duration_seconds / 60)} min` : ""}`}</p><small>{dateTime(item.occurred_at)} · {item.direction}</small></div></article>)}{!items.length && <div className="empty-state">No communications in this range.</div>}</div>; }
@@ -413,25 +423,6 @@ function ManagePage() {
     <section className="panel manage-empty"><div className="manage-mark">＋</div><span className="kicker">CLIENT MANAGEMENT</span><h2>Add a DetailEngine client</h2><p>Account-specific connectors and settings live inside each client account.</p><button className="primary-button" onClick={() => setOpen(true)}>Add a client</button>{message && <p className="manage-message">{message}</p>}</section>
     {open && <div className="modal-backdrop" onClick={() => setOpen(false)}><form className="modal-card account-form" onSubmit={submit} onClick={(event) => event.stopPropagation()}><header><div><span className="kicker">NEW CLIENT</span><h2>Add a DetailEngine client</h2></div><button type="button" onClick={() => setOpen(false)}>×</button></header><div className="form-grid"><label><span>COMPANY NAME</span><input required name="display_name" placeholder="Shine Auto Studio" /></label><label><span>LOCATION</span><input required name="general_location" placeholder="Austin, TX" /></label><label><span>NICHE</span><input name="niche" defaultValue="Auto detailing" /></label><label><span>TIMEZONE</span><input name="timezone" defaultValue="America/Chicago" /></label><label><span>MONTHLY RETAINER</span><input required name="retainer_amount" type="number" min="0" placeholder="2500" /></label><label><span>PLANNED AD SPEND</span><input required name="planned_ad_spend" type="number" min="0" placeholder="3000" /></label><label><span>TRANSFER GOAL</span><input required name="warm_transfer_goal" type="number" min="0" placeholder="20" /></label></div>{message && <p className="form-message">{message}</p>}<button className="primary-button" disabled={busy}>{busy ? "Creating…" : "Create client"}</button></form></div>}
   </>;
-}
-
-function ConnectorsModal({ client, onClose, onSaved }: { client: Client; onClose: () => void; onSaved: () => void }) {
-  const [busy, setBusy] = useState(""); const [message, setMessage] = useState("");
-  const connector = (provider: string) => client.integrations.find((row) => row.provider === provider);
-  async function save(event: FormEvent<HTMLFormElement>, provider: "ghl" | "meta") {
-    event.preventDefault(); setBusy(provider); setMessage("");
-    const formElement = event.currentTarget; const form = new FormData(formElement);
-    try {
-      const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_connector", client_slug: client.slug, provider, external_account_id: form.get("external_account_id"), secret: form.get("secret") }) });
-      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Could not save connector");
-      setMessage(`${provider === "ghl" ? "GHL" : "Meta"} saved securely.`); formElement.reset();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save connector"); } finally { setBusy(""); }
-  }
-  const cards: Array<{ provider: "ghl" | "meta"; name: string; idLabel: string; idPlaceholder: string; secretLabel: string }> = [
-    { provider: "ghl", name: "GoHighLevel", idLabel: "Location ID", idPlaceholder: "Client subaccount location ID", secretLabel: "Client PIT" },
-    { provider: "meta", name: "Meta", idLabel: "Ad account ID", idPlaceholder: "act_123456789", secretLabel: "Access token" },
-  ];
-  return <div className="modal-backdrop" onClick={onClose}><section className="modal-card connectors-modal" onClick={(event) => event.stopPropagation()}><header><div><span className="kicker">CLIENT CONNECTORS</span><h2>{cleanName(client.display_name)}</h2></div><button onClick={onClose}>×</button></header><p>Connect this client&apos;s systems. Existing secrets are never shown.</p><div className="connector-stack">{cards.map((card) => { const current = connector(card.provider); return <form key={card.provider} onSubmit={(event) => save(event, card.provider)}><div className={`provider ${card.provider}`}>{card.name[0]}</div><div className="connector-title"><strong>{card.name}</strong><StatusPill status={current?.status || "disconnected"} />{current?.has_secret && <span className="stored-secret">Secret stored ✓</span>}</div><label><span>{card.idLabel}</span><input name="external_account_id" defaultValue={current?.external_account_id || ""} placeholder={card.idPlaceholder} /></label><label><span>{card.secretLabel}</span><input name="secret" type="password" autoComplete="new-password" placeholder={current?.has_secret ? "Leave blank to keep current secret" : "Enter secret"} /></label><button className="outline-button" disabled={busy === card.provider}>{busy === card.provider ? "Saving…" : "Save"}</button></form>; })}</div>{message && <p className="form-message">{message}</p>}<footer><button className="primary-button" onClick={onSaved}>Done</button></footer></section></div>;
 }
 
 function ReportModal({ type, data, onClose }: { type: "leads" | "ads"; data: CommandCentreData; onClose: () => void }) { const [start, setStart] = useState(monthStart()); const [end, setEnd] = useState(isoToday()); const openReport = () => { const url = new URL("/api/report", window.location.origin); url.searchParams.set("slug", data.client.slug); url.searchParams.set("type", type); url.searchParams.set("from", start); url.searchParams.set("to", end); window.open(url.toString(), "_blank", "noopener,noreferrer"); }; return <div className="modal-backdrop" onClick={onClose}><section className="modal-card report-modal" onClick={(event) => event.stopPropagation()}><header><div><span className="kicker">{type === "leads" ? "LEAD REPORT" : "AD METRICS REPORT"}</span><h2>Choose the reporting range</h2></div><button onClick={onClose}>×</button></header><p>Defaults to month-to-date. Choose any valid range before generating the PDF.</p><div className="form-grid"><label><span>FROM</span><input type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span>TO</span><input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label></div><button className="primary-button" disabled={!start || !end || start > end} onClick={openReport}>Generate PDF →</button></section></div>; }

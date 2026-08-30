@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   if (token === undefined) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const source = new URL(request.url);
   const target = new URL(endpoint);
-  for (const key of ["slug", "from", "to", "month"]) {
+  for (const key of ["slug", "from", "to", "month", "cycle_id"]) {
     const value = source.searchParams.get(key);
     if (value) target.searchParams.set(key, value);
   }
