@@ -1,6 +1,6 @@
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const internalSecret = Deno.env.get("DETAILENGINE_SYNC_SECRET") ?? "";
+const allowedEmailDomain = (Deno.env.get("DETAILENGINE_ALLOWED_EMAIL_DOMAIN") || "getdetailengine.com").toLowerCase();
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -23,15 +23,25 @@ const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]
 const number = (value: unknown) => { const parsed = Number(value || 0); return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0; };
 const clean = (value: unknown) => String(value || "").trim();
 const monthEnd = (start: string) => { const date = new Date(`${start}T00:00:00.000Z`); date.setUTCMonth(date.getUTCMonth() + 1); date.setUTCDate(date.getUTCDate() - 1); return date.toISOString().slice(0, 10); };
+async function allowedUser(request: Request) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: authorization } });
+  if (!response.ok) return null;
+  const user = await response.json();
+  const email = String(user?.email || "").toLowerCase();
+  return user?.id && email.endsWith(`@${allowedEmailDomain}`) ? user : null;
+}
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json({ error: "POST required" }, 405);
-  if (!internalSecret || request.headers.get("x-detailengine-secret") !== internalSecret) return json({ error: "Unauthorized" }, 401);
+  const user = await allowedUser(request);
+  if (!user) return json({ error: "Unauthorized" }, 401);
   try {
     const payload = await request.json();
     const action = String(payload.action || "");
-    const actorUserId = clean(payload.actor_user_id);
-    const actorName = clean(payload.actor_name) || "DetailEngine team";
+    const actorUserId = String(user.id);
+    const actorName = clean(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0]) || "DetailEngine team";
 
     if (action === "acknowledge_greg") {
       await rest(`media_buying_recommendations?id=eq.${encodeURIComponent(payload.recommendation_id)}`, "PATCH", { acknowledged_at: new Date().toISOString(), acknowledged_by: actorUserId || null });

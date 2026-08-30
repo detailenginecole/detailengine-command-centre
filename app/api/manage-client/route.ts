@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
 import { getDetailEngineUser, isAuthEnabled } from "../../lib/auth";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
 
 const endpoint = "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-admin";
 
 export async function POST(request: Request) {
-  let actor: { id?: string; name?: string } = {};
+  let token: string | null = null;
   if (isAuthEnabled()) {
     const user = await getDetailEngineUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    actor = { id: user.id, name: user.name };
+    token = (await (await createSupabaseServerClient()).auth.getSession()).data.session?.access_token || null;
   }
-  const secret = process.env.DETAILENGINE_SYNC_SECRET;
-  if (!secret) return NextResponse.json({ error: "Admin setup is incomplete" }, { status: 503 });
+  if (!token) return NextResponse.json({ error: "Authenticated session required" }, { status: 401 });
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-detailengine-secret": secret },
-    body: JSON.stringify({ ...(await request.json()), actor_user_id: actor.id || null, actor_name: actor.name || "DetailEngine team" }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(publishableKey ? { apikey: publishableKey } : {}) },
+    body: JSON.stringify(await request.json()),
   });
   const payload = await response.json();
   return NextResponse.json(payload, { status: response.status });
