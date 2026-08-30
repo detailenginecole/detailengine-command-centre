@@ -24,6 +24,10 @@ type Client = {
 type WorkspaceClient = Pick<Client, "id" | "slug" | "display_name" | "lifecycle_status" | "general_location" | "niche" | "pod_name"> & {
   csm: string; media_buyer: string; performance: Performance; recent_performance: Performance; target: MonthlyTarget | null; projected_transfers: number; health_status: string; hp_score: number | null; fatigue_score: number | null; latest_alerts: string[]; integration_issues: number;
   last_synced_at?: string | null; open_feedback?: number; transfer_pace_percent?: number | null;
+  cycle?: { id: string; label: string; starts_on: string; ends_on: string; status: string; monthly_budget: number; warm_transfer_goal: number; campaign_filter: string | null } | null;
+  cycle_day?: number; cycle_days?: number; paused_days?: number | null; last_live_date?: string | null; onboarding_days?: number | null;
+  hp_projection?: { score: number | null; projected_total_transfers: number | null };
+  meta_status?: { live: boolean; matching_campaigns: number; matching_ads: number; required_campaign_name: string; campaign_filter: string | null };
 };
 type Outcome = { id: string; transferred_at: string; status: "awaiting_feedback" | "sales_process" | "pending_payment" | "closed" | "lost"; collected_revenue: number; collected_at: string | null; lost_reason: string | null; feedback_note: string | null; feedback_received_at: string | null };
 type Lead = {
@@ -67,6 +71,7 @@ export type CommandCentreData = {
     aliases: Array<{ id: string; name: string; created_at: string }>;
     integrations: Integration[];
     onboarding: { runs: Array<{ id: string; status: string; started_at?: string | null; completed_at?: string | null }>; steps: Array<{ id: string; label: string; status: string; position: number }> };
+    meta_status?: { live: boolean; matching_campaigns: number; matching_ads: number; required_campaign_name: string; campaign_filter: string | null };
   };
   reports: { leads: string; ads: string };
 };
@@ -226,6 +231,43 @@ function TeamLoad({ clients }: { clients: WorkspaceClient[] }) {
   return <article className="panel span-5"><div className="panel-head"><div><span className="kicker">TEAM LOAD</span><h2>Account ownership</h2></div></div><div className="owner-columns"><div><b>CSMs</b>{groups("csm").map(([name, rows]) => <div key={name}><span>{name}</span><strong>{rows.length}</strong></div>)}</div><div><b>MEDIA BUYERS</b>{groups("media_buyer").map(([name, rows]) => <div key={name}><span>{name}</span><strong>{rows.length}</strong></div>)}</div></div></article>;
 }
 
+const hpTone = (value: number | null) => value == null ? "unknown" : value >= 80 ? "healthy" : value >= 60 ? "watch" : value >= 40 ? "risk" : "critical";
+
+function AccountsTable({ rows, ownerView, scoreMode }: { rows: WorkspaceClient[]; ownerView: "csm" | "media_buyer"; scoreMode: "hp" | "paused" | "onboarding" }) {
+  return <div className="accounts-command-table"><div className="table-scroll"><table><thead><tr><th>{scoreMode === "hp" ? "HP" : scoreMode === "paused" ? "Time paused" : "Onboarding"}</th><th>Account</th><th>Flag</th><th>Cycle</th><th>Cycle window</th><th>Days</th><th>Leads</th><th>Transfers</th><th>Projected</th><th>CPT goal</th><th>CPT</th><th>Spend</th><th>CTR</th><th>CPC</th><th>CPM</th><th>Freq</th><th>Qual%</th><th>Survey%</th></tr></thead><tbody>{rows.map((client) => {
+    const performance = client.performance;
+    const goal = Number(client.target?.warm_transfer_goal || client.cycle?.warm_transfer_goal || 0);
+    const spendGoal = Number(client.target?.planned_ad_spend || client.cycle?.monthly_budget || 0);
+    const cptGoal = Number(client.target?.target_cost_per_transfer || (goal ? spendGoal / goal : 0));
+    const cycleDays = Math.max(1, Number(client.cycle_days || 1));
+    const cycleDay = Math.max(1, Math.min(cycleDays, Number(client.cycle_day || 1)));
+    const cycleProgress = Math.min(100, cycleDay / cycleDays * 100);
+    const survey = performance.clicks ? performance.meta_leads / performance.clicks * 100 : null;
+    const needsAttention = client.integration_issues > 0 || Number(client.open_feedback || 0) > 0;
+    const score = scoreMode === "hp" ? <span className={`hp-score ${hpTone(client.hp_score)}`} title="Four-day transfer economics health score">{client.hp_score ?? "—"}</span> : <span className="duration-score"><strong>{scoreMode === "paused" ? client.paused_days ?? 0 : client.onboarding_days ?? 0}</strong><small>days</small></span>;
+    return <tr key={client.id} tabIndex={0} onClick={() => window.location.assign(`/accounts/${client.slug}`)} onKeyDown={(event) => { if (event.key === "Enter") window.location.assign(`/accounts/${client.slug}`); }}>
+      <td>{score}</td>
+      <td><div className="command-account"><strong>{cleanName(client.display_name)}</strong><small>{client[ownerView] || "Unassigned"} · {client.general_location || client.niche || "—"}</small><i className={`account-state state-${client.lifecycle_status}`}>{client.lifecycle_status.toUpperCase()}</i></div></td>
+      <td><span className={`attention-dot ${needsAttention ? "alert" : "clear"}`} title={needsAttention ? client.latest_alerts[0] || "Non-performance issue needs attention" : "No account-level system flags"} /></td>
+      <td><span className="month-label">{client.cycle?.label || "No cycle"}</span></td>
+      <td><div className="month-window"><span>{client.cycle ? rangeLabel(client.cycle.starts_on, client.cycle.ends_on) : "Not configured"}</span><div><i style={{ width: `${cycleProgress}%` }} /></div><small>{cycleProgress.toFixed(0)}%</small></div></td>
+      <td><b className="day-label">Day {cycleDay} / {cycleDays}</b></td>
+      <td><b>{performance.total_leads}</b></td>
+      <td><strong className="transfer-cell">{performance.warm_transfers}<small> / {goal || "—"}</small></strong></td>
+      <td><span className={(goal && client.projected_transfers < goal) ? "metric-bad" : "metric-good"}>{Number(client.projected_transfers || 0).toFixed(0)}</span></td>
+      <td>{cptGoal ? preciseMoney.format(cptGoal) : "—"}</td>
+      <td><span className={performance.cost_per_transfer && cptGoal && performance.cost_per_transfer > cptGoal ? "metric-bad" : ""}>{performance.cost_per_transfer == null ? "—" : preciseMoney.format(performance.cost_per_transfer)}</span></td>
+      <td><div className="spend-cell"><strong>{money.format(performance.actual_ad_spend)}<small>/{money.format(spendGoal)}</small></strong><span>{spendGoal ? `${money.format(spendGoal / cycleDays)}/day` : "No plan"}</span></div></td>
+      <td><span className={Number(performance.ctr_percent || 0) >= 1.2 ? "metric-good" : "metric-bad"}>{pct(performance.ctr_percent, 2)}</span></td>
+      <td>{performance.cpc == null ? "—" : preciseMoney.format(performance.cpc)}</td>
+      <td>{performance.cpm == null ? "—" : preciseMoney.format(performance.cpm)}</td>
+      <td><span className={Number(performance.frequency || 0) > 2.5 ? "metric-warn" : "metric-good"}>{performance.frequency == null ? "—" : performance.frequency.toFixed(2)}</span></td>
+      <td><span className={Number(performance.qualification_rate || 0) >= 35 ? "metric-good" : "metric-bad"}>{pct(performance.qualification_rate, 0)}</span></td>
+      <td><span className={Number(survey || 0) >= 5 ? "metric-good" : "metric-bad"}>{pct(survey, 2)}</span></td>
+    </tr>;
+  })}</tbody></table>{rows.length === 0 ? <div className="command-empty">No accounts match these filters.</div> : null}</div></div>;
+}
+
 function AccountsPage({ data }: { data: CommandCentreData }) {
   const [ownerView, setOwnerView] = useState<"csm" | "media_buyer">("csm");
   const [scope, setScope] = useState<"mine" | "all">(data.workspace.current_user ? "mine" : "all");
@@ -236,29 +278,25 @@ function AccountsPage({ data }: { data: CommandCentreData }) {
     const matchesMine = scope === "all" || !currentIdentity || [client.csm, client.media_buyer].some((name) => name.toLowerCase().includes(currentIdentity));
     const q = query.trim().toLowerCase();
     return matchesMine && (lifecycle === "all" || client.lifecycle_status === lifecycle) && (!q || [client.display_name, client.general_location, client.csm, client.media_buyer].some((value) => String(value || "").toLowerCase().includes(q)));
-  }).sort((a, b) => {
-    const owner = String(a[ownerView] || "").localeCompare(String(b[ownerView] || ""));
-    if (owner !== 0) return owner;
-    if (a.hp_score == null && b.hp_score == null) return a.display_name.localeCompare(b.display_name);
-    if (a.hp_score == null) return 1;
-    if (b.hp_score == null) return -1;
-    return a.hp_score - b.hp_score;
   });
-  const active = visible.filter((client) => ["active", "test", "onboarding"].includes(client.lifecycle_status));
-  const inactive = visible.filter((client) => !["active", "test", "onboarding"].includes(client.lifecycle_status));
+  const live = visible.filter((client) => client.lifecycle_status === "live").toSorted((a, b) => a.hp_score == null ? 1 : b.hp_score == null ? -1 : a.hp_score - b.hp_score || a.display_name.localeCompare(b.display_name));
+  const paused = visible.filter((client) => client.lifecycle_status === "paused").toSorted((a, b) => Number(b.paused_days || 0) - Number(a.paused_days || 0) || a.display_name.localeCompare(b.display_name));
+  const onboardings = visible.filter((client) => client.lifecycle_status === "onboarding").toSorted((a, b) => Number(b.onboarding_days || 0) - Number(a.onboarding_days || 0) || a.display_name.localeCompare(b.display_name));
+  const activeCount = live.length + paused.length;
   const generated = new Date(data.generated_at); const hour = generated.getUTCHours();
   const greeting = hour < 5 ? "Working late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : hour < 22 ? "Good evening" : "Working late";
   const firstName = (data.workspace.current_user?.name || data.workspace.current_user?.email?.split("@")[0] || "Team").split(/[\s.]/)[0];
   const dateLabel = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(generated);
-  const monthWindow = `${shortDate(`${monthStart(data.range.end)}T00:00:00Z`)} → ${shortDate(`${data.range.end.slice(0, 7)}-${String(daysInMonth(data.range.end)).padStart(2, "0")}T00:00:00Z`)}`;
-  const monthDay = Number(data.range.end.slice(8, 10)); const monthLength = daysInMonth(data.range.end); const monthProgress = Math.min(100, monthDay / monthLength * 100);
-  const hpTone = (value: number | null) => value == null ? "unknown" : value >= 80 ? "healthy" : value >= 60 ? "watch" : value >= 40 ? "risk" : "critical";
-  const fatigueTone = (value: number | null) => value == null ? "unknown" : value >= 80 ? "critical" : value >= 60 ? "risk" : value >= 40 ? "watch" : "healthy";
-  const tableRows = [...active, ...inactive];
   return <section className="accounts-command">
-    <header className="accounts-greeting"><span>{dateLabel}</span><h1>{greeting}, <strong>{firstName}.</strong></h1><p>You&apos;re managing <b>{active.length}</b> active account{active.length === 1 ? "" : "s"} · {inactive.length} inactive</p><i /></header>
-    <div className="accounts-command-controls"><div className="segmented"><button className={scope === "mine" ? "active" : ""} onClick={() => setScope("mine")}>My accounts</button><button className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>All accounts</button></div><div className="segmented"><button className={ownerView === "csm" ? "active" : ""} onClick={() => setOwnerView("csm")}>By CSM</button><button className={ownerView === "media_buyer" ? "active" : ""} onClick={() => setOwnerView("media_buyer")}>By media buyer</button></div><select value={lifecycle} onChange={(event) => setLifecycle(event.target.value)}><option value="all">All stages</option><option value="active">Active</option><option value="onboarding">Onboarding</option><option value="paused">Paused</option><option value="test">Test</option></select><label className="command-search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts" /></label></div>
-    <div className="accounts-command-table"><div className="table-scroll"><table><thead><tr><th>HP</th><th>Account</th><th>Flag</th><th>FTG</th><th>Month</th><th>Month window</th><th>Days</th><th>Leads</th><th>Transfers</th><th>Projected</th><th>CPT goal</th><th>CPT</th><th>Spend</th><th>CTR</th><th>CPC</th><th>CPM</th><th>Freq</th><th>Qual%</th><th>Survey%</th></tr></thead><tbody>{tableRows.map((client) => { const p = client.performance; const hp = client.hp_score; const ftg = client.fatigue_score; const goal = Number(client.target?.warm_transfer_goal || 0); const spendGoal = Number(client.target?.planned_ad_spend || 0); const cptGoal = Number(client.target?.target_cost_per_transfer || 0); const survey = p.clicks ? p.meta_leads / p.clicks * 100 : null; const isActive = active.some((row) => row.id === client.id); const needsAttention = client.integration_issues > 0 || Number(client.open_feedback || 0) > 0 || (hp != null && hp < 60); return <tr key={client.id} className={isActive ? "" : "inactive"} tabIndex={0} onClick={() => window.location.assign(`/accounts/${client.slug}`)} onKeyDown={(event) => { if (event.key === "Enter") window.location.assign(`/accounts/${client.slug}`); }}><td><span className={`hp-score ${hpTone(hp)}`} title="Health score: 90% five-day warm-transfer pace, 10% supporting metrics">{hp ?? "—"}</span></td><td><div className="command-account"><strong>{cleanName(client.display_name)}</strong><small>{client[ownerView] || "Unassigned"} · {client.general_location || client.niche || "—"}</small>{!isActive && <i>INACTIVE</i>}</div></td><td><span className={`attention-dot ${needsAttention ? "alert" : "clear"}`} title={needsAttention ? client.latest_alerts[0] || "Needs attention" : "No active flags"} /></td><td><span className={`ftg-score ${fatigueTone(ftg)}`}>{ftg ?? "—"}</span></td><td><span className="month-label">{new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(new Date(`${data.range.end.slice(0, 7)}-01T00:00:00Z`))}</span></td><td><div className="month-window"><span>{monthWindow}</span><div><i style={{ width: `${monthProgress}%` }} /></div><small>{monthProgress.toFixed(0)}%</small></div></td><td><b className="day-label">Day {monthDay}</b></td><td><b>{p.total_leads}</b></td><td><strong className="transfer-cell">{p.warm_transfers}<small> / {goal || "—"}</small></strong></td><td><span className={(goal && client.projected_transfers < goal) ? "metric-bad" : "metric-good"}>{client.projected_transfers.toFixed(0)}</span></td><td>{cptGoal ? preciseMoney.format(cptGoal) : "—"}</td><td><span className={p.cost_per_transfer && cptGoal && p.cost_per_transfer > cptGoal ? "metric-bad" : ""}>{p.cost_per_transfer == null ? "—" : preciseMoney.format(p.cost_per_transfer)}</span></td><td><div className="spend-cell"><strong>{money.format(p.actual_ad_spend)}<small>/{money.format(spendGoal)}</small></strong><span>{spendGoal ? `${money.format(spendGoal / monthLength)}/day` : "No plan"}</span></div></td><td><span className={Number(p.ctr_percent || 0) >= 1.2 ? "metric-good" : "metric-bad"}>{pct(p.ctr_percent, 2)}</span></td><td>{p.cpc == null ? "—" : preciseMoney.format(p.cpc)}</td><td>{p.cpm == null ? "—" : preciseMoney.format(p.cpm)}</td><td><span className={Number(p.frequency || 0) > 2.5 ? "metric-warn" : "metric-good"}>{p.frequency == null ? "—" : p.frequency.toFixed(2)}</span></td><td><span className={Number(p.qualification_rate || 0) >= 35 ? "metric-good" : "metric-bad"}>{pct(p.qualification_rate, 0)}</span></td><td><span className={Number(survey || 0) >= 5 ? "metric-good" : "metric-bad"}>{pct(survey, 2)}</span></td></tr>; })}</tbody></table>{!tableRows.length && <div className="command-empty">No accounts match these filters.</div>}</div></div>
+    <header className="accounts-greeting"><span>{dateLabel}</span><h1>{greeting}, <strong>{firstName}.</strong></h1><p>You&apos;re managing <b>{activeCount}</b> active account{activeCount === 1 ? "" : "s"} · {onboardings.length} onboarding</p><i /></header>
+    <div className="accounts-command-controls"><div className="segmented"><button className={scope === "mine" ? "active" : ""} onClick={() => setScope("mine")}>My accounts</button><button className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>All accounts</button></div><div className="segmented"><button className={ownerView === "csm" ? "active" : ""} onClick={() => setOwnerView("csm")}>Show CSM</button><button className={ownerView === "media_buyer" ? "active" : ""} onClick={() => setOwnerView("media_buyer")}>Show media buyer</button></div><select value={lifecycle} onChange={(event) => setLifecycle(event.target.value)}><option value="all">All statuses</option><option value="live">Live</option><option value="paused">Paused</option><option value="onboarding">Onboarding</option></select><label className="command-search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts" /></label></div>
+    <div className="account-list-sections">
+      <section><header className="account-list-title"><div><span>ACTIVE ACCOUNTS</span><h2>Accounts under active management</h2></div><b>{activeCount}</b></header>
+        <div className="account-status-group"><header><div><span>PAUSED ACCOUNTS</span><h3>Longest paused first</h3></div><b>{paused.length}</b></header><AccountsTable rows={paused} ownerView={ownerView} scoreMode="paused" /></div>
+        <div className="account-status-group"><header><div><span>LIVE ACCOUNTS</span><h3>Lowest HP first</h3></div><b>{live.length}</b></header><AccountsTable rows={live} ownerView={ownerView} scoreMode="hp" /></div>
+      </section>
+      <section><header className="account-list-title"><div><span>ONBOARDINGS</span><h2>Accounts waiting for their first in-scope Meta launch</h2></div><b>{onboardings.length}</b></header><AccountsTable rows={onboardings} ownerView={ownerView} scoreMode="onboarding" /></section>
+    </div>
   </section>;
 }
 
@@ -338,18 +376,21 @@ function AdsManager({ data }: { data: CommandCentreData }) {
   const selectedEntities = selected.map((id) => data.ad_entities.find((entity) => entity.id === id)).filter(Boolean) as AdEntity[];
   const selectedCampaigns = new Set(selectedEntities.filter((row) => row.entity_type === "campaign").map((row) => row.external_id));
   const selectedAdSets = new Set(selectedEntities.filter((row) => row.entity_type === "ad_set").map((row) => row.external_id));
+  const requiredCampaignName = "detailengine b2c";
   const campaignFilter = String(data.account_status?.cycle?.campaign_filter || "").trim().toLowerCase();
   const eligible = data.ad_entity_performance.filter((row) => {
     if (row.entity_type !== level) return false;
-    if (level === "ad_set" && selectedCampaigns.size) return selectedCampaigns.has(String(row.parent_external_id || ""));
-    if (level === "ad" && selectedAdSets.size) return selectedAdSets.has(String(row.parent_external_id || ""));
-    if (level === "ad" && selectedCampaigns.size) return selectedCampaigns.has(String(entityByExternal.get(String(row.parent_external_id || ""))?.parent_external_id || ""));
-    if (!campaignFilter) return true;
     const entity = entityByExternal.get(row.external_id);
     const parent = entityByExternal.get(String(entity?.parent_external_id || ""));
     const grandparent = entityByExternal.get(String(parent?.parent_external_id || ""));
     const campaign = row.entity_type === "campaign" ? row : row.entity_type === "ad_set" ? parent : grandparent;
-    return [campaign?.name, campaign?.external_id].some((value) => String(value || "").toLowerCase().includes(campaignFilter));
+    const campaignIdentity = `${campaign?.name || ""} ${campaign?.external_id || ""}`.toLowerCase();
+    if (campaignIdentity.includes(requiredCampaignName) === false) return false;
+    if (campaignFilter && campaignIdentity.includes(campaignFilter) === false) return false;
+    if (level === "ad_set" && selectedCampaigns.size) return selectedCampaigns.has(String(row.parent_external_id || ""));
+    if (level === "ad" && selectedAdSets.size) return selectedAdSets.has(String(row.parent_external_id || ""));
+    if (level === "ad" && selectedCampaigns.size) return selectedCampaigns.has(String(entityByExternal.get(String(row.parent_external_id || ""))?.parent_external_id || ""));
+    return true;
   });
   const cycleStart = data.account_status?.cycle?.starts_on || data.range.start;
   const cycleDays = data.account_status?.cycle_days || data.range.days;

@@ -63,15 +63,13 @@ Deno.serve(async (request) => {
 
     if (action === "update_account") {
       const displayName = clean(payload.display_name);
-      const lifecycleStatus = clean(payload.lifecycle_status);
       if (!displayName) return json({ error: "Account name is required" }, 400);
-      if (!["prospect", "onboarding", "live", "paused", "churned", "archived", "active", "test"].includes(lifecycleStatus)) return json({ error: "Invalid lifecycle status" }, 400);
       const oldName = clean(selectedClient?.display_name);
-      await rest(`clients?id=eq.${selectedClient?.id}`, "PATCH", { display_name: displayName, lifecycle_status: lifecycleStatus, updated_at: new Date().toISOString() });
+      await rest(`clients?id=eq.${selectedClient?.id}`, "PATCH", { display_name: displayName, updated_at: new Date().toISOString() });
       if (oldName && oldName !== displayName) {
         await rest("client_notes", "POST", { client_id: selectedClient?.id, category: "account_alias", body: oldName, created_by: actorUserId || null });
       }
-      return json({ ok: true, display_name: displayName, lifecycle_status: lifecycleStatus });
+      return json({ ok: true, display_name: displayName, lifecycle_status: selectedClient?.lifecycle_status });
     }
 
     if (action === "save_cycle") {
