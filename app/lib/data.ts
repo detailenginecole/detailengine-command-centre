@@ -3,7 +3,7 @@ import { isAuthEnabled } from "./auth";
 import { createSupabaseServerClient } from "./supabase/server";
 
 export const DATA_URL = process.env.VERCEL_ENV === "production"
-  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-demo"
+  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-production"
   : "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-staging";
 
 export async function loadCommandCentre(slug?: string): Promise<CommandCentreData> {

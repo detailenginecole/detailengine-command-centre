@@ -3,7 +3,7 @@ import { getDetailEngineUser, isAuthEnabled } from "../../lib/auth";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 
 const endpoint = process.env.VERCEL_ENV === "production"
-  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-demo"
+  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-production"
   : "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-staging";
 
 async function accessToken() {

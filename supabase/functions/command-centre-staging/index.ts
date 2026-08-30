@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-detailengine-secret","Access-Control-Allow-Methods":"GET, OPTIONS"};
+const corsHeaders={"Access-Control-Allow-Origin":"https://dashboard.getdetailengine.com","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-detailengine-secret","Access-Control-Allow-Methods":"GET, OPTIONS"};
 const supabaseUrl=Deno.env.get("SUPABASE_URL")??"";
 const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"";
 const syncSecret=Deno.env.get("DETAILENGINE_SYNC_SECRET")??"";
