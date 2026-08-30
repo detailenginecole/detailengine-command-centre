@@ -11,8 +11,9 @@ the source of truth and supplies the dashboard data through Edge Functions.
 - Company-wide overview and account list
 - Per-account performance, ROI, leads, outcomes, and GHL history
 - Meta campaign, ad set, and ad detail
-- Greg's advice-only media-buying audits
-- Client setup, goals, connection health, and feedback routing
+- DetailEngine advice-only media intelligence
+- Live account identity/lifecycle, sequential monthly cycles, onboarding, Meta/GHL integration management, and feedback routing
+- Supabase-backed internal account chat with attributed messages, replies, and reply notifications
 - Date-range lead and ad reports
 - Supabase Google authentication restricted to the DetailEngine email domain
 
@@ -36,6 +37,11 @@ variable. The browser only receives the Supabase publishable key.
 
 The server-only `DETAILENGINE_SYNC_SECRET` must match the secret used by the
 DetailEngine Supabase Edge Functions.
+
+Account-management writes do not use this shared secret. They forward the
+signed-in Supabase access token to the JWT-protected
+`command-centre-admin` function, which derives the actor from the verified
+DetailEngine user session.
 
 ## Supabase Auth setup
 
