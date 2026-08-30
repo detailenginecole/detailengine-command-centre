@@ -258,6 +258,7 @@ function AccountWorkspace({ data, refreshing, onRange, onReport, onSelectLead, o
     overview={(open) => <PerformanceTab data={data} onTab={(next) => open(next === "ads" ? "campaigns" : "leads")} onSelectLead={onSelectLead} onFeedback={onFeedback} />}
     leads={<LeadsTab data={data} onSelect={onSelectLead} />}
     campaigns={<AdsManager data={data} />}
+    communications={<CommunicationsPanel data={data} onFeedback={onFeedback} />}
   />;
 }
 
@@ -401,6 +402,18 @@ function GregGoals({ target, audit }: { target: MonthlyTarget | null; audit?: Gr
 }
 
 function ActivityList({ items }: { items: Communication[] }) { return <div className="activity-list">{items.map((item) => <article key={item.id}><span className={item.lead_id ? "lead" : "client"}>{item.channel === "phone" ? "☎" : "✉"}</span><div><header><strong>{item.sender_name || (item.direction === "outbound" ? "DetailEngine" : "Contact")}</strong><StatusPill status={item.lead_id ? "lead" : "client"} /></header><p>{item.body_text || `${statusText(item.event_type)}${item.duration_seconds ? ` · ${Math.round(item.duration_seconds / 60)} min` : ""}`}</p><small>{dateTime(item.occurred_at)} · {item.direction}</small></div></article>)}{!items.length && <div className="empty-state">No communications in this range.</div>}</div>; }
+
+function CommunicationsPanel({ data, onFeedback }: { data: CommandCentreData; onFeedback: () => void }) {
+  const p = data.performance;
+  const openFeedback = p.awaiting_feedback + p.in_sales_process + p.pending_payment;
+  const syncRuns = data.operations?.sync_runs.slice(0, 4) || [];
+  const tickets = data.operations?.support_tickets.slice(0, 3) || [];
+  return <>
+    <article className="panel communications-feedback-panel"><div className="panel-head"><div><span className="kicker">FEEDBACK LOOP</span><h2>{openFeedback} outcomes still open</h2></div><button className="text-button" onClick={onFeedback}>Configure</button></div><p className="muted">Daily GHL messages keep asking about unresolved transfers until the client reports closed or lost.</p><div className="contact-card">{data.feedback_contact ? <><span>{initials(data.feedback_contact.full_name || "Client Contact")}</span><div><strong>{data.feedback_contact.full_name || "Feedback contact"}</strong><small>{data.feedback_contact.phone}</small></div><StatusPill status={data.feedback_contact.status} /></> : <><span>?</span><div><strong>No feedback number</strong><small>Lookup or create the contact in GHL.</small></div><button onClick={onFeedback}>Add</button></>}</div><div className="resolution"><span>Resolution coverage</span><strong>{pct(p.feedback_resolution_rate)}</strong><div className="meter"><i style={{ width: Math.min(100, p.feedback_resolution_rate || 0) + "%" }} /></div></div></article>
+    <article className="panel communications-feed-panel"><div className="panel-head"><div><span className="kicker">GHL & CLIENT ACTIVITY</span><h2>External conversations</h2></div><span className="status-pill neutral">{data.communications.length} events</span></div><ActivityList items={data.communications} /></article>
+    <article className="panel communications-system-panel"><div className="panel-head"><div><span className="kicker">SYSTEM ACTIVITY</span><h2>Syncs and support</h2></div></div><div className="communications-system-list">{syncRuns.map((run) => <div key={run.id}><span>{statusText(run.sync_type)}</span><strong>{statusText(run.status)}</strong><small>{run.imported_count} imported · {run.error_count} errors · {dateTime(run.created_at)}</small></div>)}{tickets.map((ticket) => <div key={ticket.id}><span>{ticket.priority} support</span><strong>{ticket.subject}</strong><small>{statusText(ticket.status)} · {dateTime(ticket.created_at)}</small></div>)}{!syncRuns.length && !tickets.length ? <div className="empty-state">No system activity in this range.</div> : null}</div></article>
+  </>;
+}
 
 function ManagePage() {
   const [open, setOpen] = useState(false); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
