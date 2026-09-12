@@ -3,6 +3,16 @@ import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const syncSecret = Deno.env.get("DETAILENGINE_SYNC_SECRET") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const allowedEmailDomain = (Deno.env.get("DETAILENGINE_ALLOWED_EMAIL_DOMAIN") || "getdetailengine.com").toLowerCase();
+async function allowedUser(request: Request) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return false;
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: authorization } });
+  if (!response.ok) return false;
+  const user = await response.json();
+  return Boolean(user?.id && user?.email_confirmed_at && String(user.email || "").toLowerCase().endsWith(`@${allowedEmailDomain}`));
+}
 
 const orange = rgb(1, 0.396, 0);
 const ink = rgb(0.067, 0.067, 0.059);
@@ -65,7 +75,7 @@ Deno.serve(async (request) => {
   const url = new URL(request.url);
   const clientId = url.searchParams.get("client_id");
   const hasWorkspaceAccess = Boolean(syncSecret) && request.headers.get("x-detailengine-secret") === syncSecret;
-  if (!hasWorkspaceAccess) return new Response("Unauthorized", {status:401});
+  if (!hasWorkspaceAccess && !await allowedUser(request)) return new Response("Unauthorized", {status:401});
   if (!isClientId(clientId)) return new Response("Valid client_id required", {status:400});
   const type = url.searchParams.get("type") === "ads" ? "ads" : "leads";
   const month = /^\d{4}-\d{2}$/.test(url.searchParams.get("month") || "")
@@ -77,7 +87,7 @@ Deno.serve(async (request) => {
 
   const dataResponse = await fetch(
     `${supabaseUrl}/functions/v1/command-centre-data-staging?client_id=${encodeURIComponent(clientId)}&from=${from}&to=${to}`,
-    { headers: hasWorkspaceAccess ? { "x-detailengine-secret": syncSecret } : undefined },
+    { headers: { "x-detailengine-secret": syncSecret } },
   );
   if (!dataResponse.ok) return new Response("Could not load report data", { status: dataResponse.status });
   const data = await dataResponse.json();
