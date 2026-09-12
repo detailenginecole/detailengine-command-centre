@@ -14,7 +14,14 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
 async function rest(path: string) {
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } });
+  let response = await fetch(`${supabaseUrl}/rest/v1/${path}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } });
+  if ([502, 503, 504].includes(response.status)) {
+    await response.body?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+    });
+  }
   if (!response.ok) {
     const detail = await response.text();
     console.error("PostgREST", response.status, detail);

@@ -6,10 +6,11 @@ const a={id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',slug:'shop-a',display_name:'S
 const b={id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',slug:'shop-b',display_name:'Shop B'};
 const compile=s=>ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const identity={};new Function('exports',compile(await readFile(new URL('../app/lib/client-identity.ts',import.meta.url),'utf8')))(identity);
-async function endpoint(name,rows=[a,b],upstreamClient=b,actor={id:'internal-user',email:'staff@getdetailengine.com',email_confirmed_at:'2026-09-12T00:00:00Z'}) {
+async function endpoint(name,rows=[a,b],upstreamClient=b,actor={id:'internal-user',email:'staff@getdetailengine.com',email_confirmed_at:'2026-09-12T00:00:00Z'},failureCount=0,failureStatus=504) {
  let handler;const calls=[];
  const fetch=async (input,options={})=>{
   const url=new URL(input);const body=options.body?JSON.parse(options.body):null;calls.push({url,method:options.method||'GET',body});
+  if(url.pathname.endsWith('/client_notes') && failureCount-- > 0) return new Response('Temporary upstream failure',{status:failureStatus});
   let result=[];
   if(url.pathname==='/auth/v1/user')result=actor;
   else if(url.pathname.endsWith('/client_command_centre'))result=rows;
@@ -61,4 +62,17 @@ test('reports deny missing, unconfirmed and outside-domain sessions before readi
  const missing=await endpoint('command-centre-report');
  assert.equal((await missing.run('client_id='+a.id,undefined,{})).status,401);
  assert.equal(missing.calls.length,0);
+});
+
+test('transient read failures retry exactly once with the same client ID',async()=>{
+ const e=await endpoint('command-centre-data-production',undefined,undefined,undefined,1);
+ assert.equal((await e.run('client_id='+b.id)).status,200);
+ const reads=e.calls.filter(c=>c.url.pathname.endsWith('/client_notes'));
+ assert.equal(reads.length,2);assert.equal(reads[0].url.href,reads[1].url.href);
+ assert.equal(reads[1].url.searchParams.get('client_id'),'eq.'+b.id);
+ for(const [count,status,expectedReads] of [[3,504,2],[3,403,1]]){
+  const failed=await endpoint('command-centre-data-production',undefined,undefined,undefined,count,status);
+  assert.equal((await failed.run('client_id='+b.id)).status,500);
+  assert.equal(failed.calls.filter(c=>c.url.pathname.endsWith('/client_notes')).length,expectedReads);
+ }
 });
