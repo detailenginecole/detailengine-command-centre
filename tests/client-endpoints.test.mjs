@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const a={id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',slug:'shop-a',display_name:'Shop A'};
+const b={id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',slug:'shop-b',display_name:'Shop B'};
+const compile=s=>ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const identity={};new Function('exports',compile(await readFile(new URL('../app/lib/client-identity.ts',import.meta.url),'utf8')))(identity);
+async function endpoint(name,rows=[a,b],upstreamClient=b) {
+ let handler;const calls=[];
+ const fetch=async (input,options={})=>{
+  const url=new URL(input);const body=options.body?JSON.parse(options.body):null;calls.push({url,method:options.method||'GET',body});
+  let result=[];
+  if(url.pathname==='/auth/v1/user')result={id:'internal-user',email:'staff@getdetailengine.com',user_metadata:{}};
+  else if(url.pathname.endsWith('/client_command_centre'))result=rows;
+  else if(url.pathname.endsWith('/clients'))result=rows.filter(c=>'eq.'+c.id===url.searchParams.get('id'));
+  else if(url.pathname.includes('/functions/'))result={client:upstreamClient};
+  return new Response(JSON.stringify(result),{headers:{'Content-Type':'application/json'}});
+ };
+ const deno={env:{get:n=>({SUPABASE_URL:'https://db.example.test',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service',DETAILENGINE_SYNC_SECRET:'synthetic-sync'})[n]},serve:h=>{handler=h;}};
+ const require=name=>name.includes('client-identity')?identity:{rgb:()=>({})};
+ new Function('exports','require','Deno','fetch',compile(await readFile(new URL(`../supabase/functions/${name}/index.ts`,import.meta.url),'utf8')))({},require,deno,fetch);
+ return {calls,run:(query='',body)=>handler(new Request('https://edge.example.test/?'+query,{method:body?'POST':'GET',headers:{'x-detailengine-secret':'synthetic-sync',Authorization:'Bearer synthetic-user','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}))};
+}
+test('data endpoint resolves UUID B and all selected-account queries retain B',async()=>{
+ const e=await endpoint('command-centre-data-staging');const r=await e.run('client_id='+b.id);assert.equal(r.status,200);assert.equal((await r.json()).client.id,b.id);
+ const scoped=e.calls.filter(c=>c.url.searchParams.has('client_id'));assert.ok(scoped.length>10);for(const c of scoped)assert.equal(c.url.searchParams.get('client_id'),'eq.'+b.id);
+});
+test('data endpoint rejects conflicting, unknown and ambiguous selections before loading details',async()=>{
+ for(const [query,rows] of [['client_id='+b.id+'&slug='+a.slug,[a,b]],['client_id=cccccccc-cccc-4ccc-8ccc-cccccccccccc',[a,b]],['slug=shop-a',[a,{...b,slug:a.slug}]]]){
+  const e=await endpoint('command-centre-data-staging',rows);assert.equal((await e.run(query)).status,404);assert.equal(e.calls.length,1);
+ }
+});
+test('account writes use the submitted UUID, never a slug or default account',async()=>{
+ const e=await endpoint('command-centre-admin-staging');assert.equal((await e.run('',{action:'add_note',client_id:b.id,body:'Synthetic note'})).status,201);
+ const write=e.calls.find(c=>c.method==='POST'&&c.url.pathname.endsWith('/client_notes'));assert.equal(write.body.client_id,b.id);
+ for(const body of [{client_slug:a.slug},{client_id:b.id,client_slug:a.slug},{client_id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'}]){
+  const denied=await endpoint('command-centre-admin-staging');assert.ok((await denied.run('',{action:'add_note',body:'Synthetic note',...body})).status>=400);assert.equal(denied.calls.filter(c=>c.method!=='GET').length,0);
+ }
+});
+test('reports require a UUID and reject an upstream response for another client',async()=>{
+ const e=await endpoint('command-centre-report-staging');assert.equal((await e.run('slug=shop-a')).status,400);assert.equal(e.calls.length,0);
+ assert.equal((await e.run('client_id='+a.id)).status,502);assert.equal(e.calls[0].url.searchParams.get('client_id'),a.id);
+});

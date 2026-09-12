@@ -7,5 +7,5 @@ export default async function AccountPage({ params }: { params: Promise<{ slug: 
   const user = await requireDetailEngineUser(`/accounts/${slug}`);
   const data = await loadCommandCentre(slug);
   data.workspace.current_user = user;
-  return <CommandCentre initialData={data} dataUrl={dataUrl(slug)} screen="account" />;
+  return <CommandCentre initialData={data} dataUrl={dataUrl(data.client.id)} screen="account" />;
 }

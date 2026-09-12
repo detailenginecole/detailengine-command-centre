@@ -50,7 +50,7 @@ type ClientNote = { id: string; category: string | null; body: string; created_a
 type SyncRun = { id: string; sync_type: string; status: string; imported_count: number; error_count: number; error_summary: string | null; created_at: string; completed_at: string | null };
 type SupportTicket = { id: string; subject: string; description: string | null; category: string | null; priority: string; status: string; submitted_by_name: string | null; created_at: string };
 type AccountMessage = { id: string; client_id: string; parent_message_id: string | null; author_user_id: string; author_name: string; body: string; created_at: string; mine: boolean; parent: { id: string; author_name: string; body: string } | null };
-type AccountNotification = { id: string; client_id: string; title: string; body: string; read_at: string | null; created_at: string; client: { slug: string; display_name: string } | null };
+type AccountNotification = { id: string; client_id: string; title: string; body: string; read_at: string | null; created_at: string; client: { id: string; slug: string; display_name: string } | null };
 
 export type CommandCentreData = {
   mode: string; generated_at: string; range: { start: string; end: string; days: number }; client: Client; selected_month: string; months: Performance[]; performance: Performance;
@@ -113,7 +113,7 @@ function Shell({ screen, children, user, notifications, mobileOpen, setMobileOpe
       await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark_notification_read", notification_id: item.id }) });
       setLocallyRead((current) => current.includes(item.id) ? current : [...current, item.id]);
     }
-    if (item.client?.slug) window.location.assign(`/accounts/${item.client.slug}#account-communications`);
+    if (item.client?.id) window.location.assign(`/accounts/${item.client.id}#account-communications`);
   }
   const nav = [
     { id: "overview", href: "/", label: "Company Overview", icon: "⌂" },
@@ -158,7 +158,7 @@ export function CommandCentre({ initialData, dataUrl, screen }: { initialData: C
     setRefreshing(true);
     try {
       const url = new URL(dataUrl, window.location.origin);
-      url.searchParams.set("slug", data.client.slug);
+      url.searchParams.set("client_id", data.client.id);
       url.searchParams.set("from", next.start);
       url.searchParams.set("to", next.end);
       if (next.cycleId) url.searchParams.set("cycle_id", next.cycleId);
@@ -166,6 +166,7 @@ export function CommandCentre({ initialData, dataUrl, screen }: { initialData: C
       const response = await fetch(url.toString());
       if (!response.ok) throw new Error("Refresh failed");
       const nextData = await response.json() as CommandCentreData;
+      if (nextData.client.id !== data.client.id) throw new Error("Account identity mismatch");
       nextData.workspace.current_user = data.workspace.current_user;
       setData(nextData);
     } finally { setRefreshing(false); }
@@ -208,10 +209,10 @@ function CompanyOverview({ data, refreshing, onRange }: { data: CommandCentreDat
     <section className="metric-grid company-metrics"><MetricCard label="Client revenue collected" value={money.format(clientRevenue)} note="Closed warm-transfer outcomes" tone="green" /><MetricCard label="Client investment" value={money.format(spend + retainers)} note={`${money.format(spend)} ad spend + retainers`} tone="yellow" /><MetricCard label="Portfolio ROI" value={`${money.format(net)} · ${spend + retainers ? pct(net / (spend + retainers) * 100) : "—"}`} note="Client revenue minus spend and retainers" tone={net >= 0 ? "green" : "orange"} /><MetricCard label="Warm transfers" value={count.format(transfers)} note={`${count.format(total("qualified_leads"))} qualified leads`} tone="blue" /></section>
     <section className="dashboard-grid">
       <PortfolioTrend rows={data.workspace.daily || []} />
-      <article className="panel span-4"><div className="panel-head"><div><span className="kicker">TODAY&apos;S BRIEFING</span><h2>Priority work</h2></div><Link href="/accounts">Open queue →</Link></div><div className="briefing-list">{riskAccounts.slice(0, 4).map((client) => <Link href={`/accounts/${client.slug}`} key={client.id}><StatusPill status={client.health_status} /><div><strong>{cleanName(client.display_name)}</strong><small>{client.latest_alerts[0] || `${client.open_feedback || 0} open transfer outcomes`}</small></div></Link>)}{!riskAccounts.length && <div className="empty-good">✓ Portfolio is clear.</div>}</div></article>
-      <article className="panel span-8"><div className="panel-head"><div><span className="kicker">ACCOUNT HEALTH</span><h2>Where attention is needed</h2></div><Link href="/accounts">View accounts →</Link></div>{riskAccounts.length ? <div className="attention-list">{riskAccounts.slice(0, 6).map((client) => <Link href={`/accounts/${client.slug}`} key={client.id}><div className="account-badge">{initials(cleanName(client.display_name))}</div><div><strong>{cleanName(client.display_name)}</strong><small>{client.latest_alerts[0] || (client.integration_issues ? `${client.integration_issues} integration issue${client.integration_issues === 1 ? "" : "s"}` : "Delivery is below pace")}</small></div><StatusPill status={client.health_status} /></Link>)}</div> : <div className="empty-good">✓ No account needs immediate attention.</div>}</article>
+      <article className="panel span-4"><div className="panel-head"><div><span className="kicker">TODAY&apos;S BRIEFING</span><h2>Priority work</h2></div><Link href="/accounts">Open queue →</Link></div><div className="briefing-list">{riskAccounts.slice(0, 4).map((client) => <Link href={`/accounts/${client.id}`} key={client.id}><StatusPill status={client.health_status} /><div><strong>{cleanName(client.display_name)}</strong><small>{client.latest_alerts[0] || `${client.open_feedback || 0} open transfer outcomes`}</small></div></Link>)}{!riskAccounts.length && <div className="empty-good">✓ Portfolio is clear.</div>}</div></article>
+      <article className="panel span-8"><div className="panel-head"><div><span className="kicker">ACCOUNT HEALTH</span><h2>Where attention is needed</h2></div><Link href="/accounts">View accounts →</Link></div>{riskAccounts.length ? <div className="attention-list">{riskAccounts.slice(0, 6).map((client) => <Link href={`/accounts/${client.id}`} key={client.id}><div className="account-badge">{initials(cleanName(client.display_name))}</div><div><strong>{cleanName(client.display_name)}</strong><small>{client.latest_alerts[0] || (client.integration_issues ? `${client.integration_issues} integration issue${client.integration_issues === 1 ? "" : "s"}` : "Delivery is below pace")}</small></div><StatusPill status={client.health_status} /></Link>)}</div> : <div className="empty-good">✓ No account needs immediate attention.</div>}</article>
       <article className="panel span-4"><div className="panel-head"><div><span className="kicker">REVENUE RISK</span><h2>Client concentration</h2></div></div><div className="big-stat">{pct(concentration, 0)}</div><p className="muted">of current retainer revenue comes from the largest account.</p><div className="meter"><i style={{ width: `${Math.min(100, concentration)}%` }} /></div><small className="health-note">Lower concentration means one churn cannot heavily damage company revenue.</small></article>
-      <article className="panel span-7"><div className="panel-head"><div><span className="kicker">PORTFOLIO DELIVERY</span><h2>Transfers versus monthly goals</h2></div></div><div className="portfolio-bars">{clients.slice(0, 8).map((client) => { const goal = Number(client.target?.warm_transfer_goal || 0); const progress = goal ? client.performance.warm_transfers / goal * 100 : 0; return <Link href={`/accounts/${client.slug}`} key={client.id}><span>{cleanName(client.display_name)}</span><div><i style={{ width: `${Math.min(100, progress)}%` }} /></div><strong>{client.performance.warm_transfers}/{goal || "—"}</strong></Link>; })}</div></article>
+      <article className="panel span-7"><div className="panel-head"><div><span className="kicker">PORTFOLIO DELIVERY</span><h2>Transfers versus monthly goals</h2></div></div><div className="portfolio-bars">{clients.slice(0, 8).map((client) => { const goal = Number(client.target?.warm_transfer_goal || 0); const progress = goal ? client.performance.warm_transfers / goal * 100 : 0; return <Link href={`/accounts/${client.id}`} key={client.id}><span>{cleanName(client.display_name)}</span><div><i style={{ width: `${Math.min(100, progress)}%` }} /></div><strong>{client.performance.warm_transfers}/{goal || "—"}</strong></Link>; })}</div></article>
       <TeamLoad clients={clients} />
     </section>
   </>;
@@ -245,7 +246,7 @@ function AccountsTable({ rows, ownerView, scoreMode }: { rows: WorkspaceClient[]
     const survey = performance.clicks ? performance.meta_leads / performance.clicks * 100 : null;
     const needsAttention = client.integration_issues > 0 || Number(client.open_feedback || 0) > 0;
     const score = scoreMode === "hp" ? <span className={`hp-score ${hpTone(client.hp_score)}`} title="Four-day transfer economics health score">{client.hp_score ?? "—"}</span> : <span className="duration-score"><strong>{scoreMode === "paused" ? client.paused_days ?? 0 : client.onboarding_days ?? 0}</strong><small>days</small></span>;
-    return <tr key={client.id} tabIndex={0} onClick={() => window.location.assign(`/accounts/${client.slug}`)} onKeyDown={(event) => { if (event.key === "Enter") window.location.assign(`/accounts/${client.slug}`); }}>
+    return <tr key={client.id} tabIndex={0} onClick={() => window.location.assign(`/accounts/${client.id}`)} onKeyDown={(event) => { if (event.key === "Enter") window.location.assign(`/accounts/${client.id}`); }}>
       <td>{score}</td>
       <td><div className="command-account"><strong>{cleanName(client.display_name)}</strong><small>{client[ownerView] || "Unassigned"} · {client.general_location || client.niche || "—"}</small><i className={`account-state state-${client.lifecycle_status}`}>{client.lifecycle_status.toUpperCase()}</i></div></td>
       <td><span className={`attention-dot ${needsAttention ? "alert" : "clear"}`} title={needsAttention ? client.latest_alerts[0] || "Non-performance issue needs attention" : "No account-level system flags"} /></td>
@@ -366,13 +367,13 @@ function AdsManager({ data }: { data: CommandCentreData }) {
     let active = true;
     queueMicrotask(() => {
       try {
-        const saved = localStorage.getItem(`de-ad-selection:${data.client.slug}`);
+        const saved = localStorage.getItem(`de-ad-selection:${data.client.id}`);
         if (active && saved) setSelected(JSON.parse(saved));
       } catch {}
     });
     return () => { active = false; };
-  }, [data.client.slug]);
-  useEffect(() => { try { localStorage.setItem(`de-ad-selection:${data.client.slug}`, JSON.stringify(selected)); } catch {} }, [data.client.slug, selected]);
+  }, [data.client.id]);
+  useEffect(() => { try { localStorage.setItem(`de-ad-selection:${data.client.id}`, JSON.stringify(selected)); } catch {} }, [data.client.id, selected]);
   const selectedEntities = selected.map((id) => data.ad_entities.find((entity) => entity.id === id)).filter(Boolean) as AdEntity[];
   const selectedCampaigns = new Set(selectedEntities.filter((row) => row.entity_type === "campaign").map((row) => row.external_id));
   const selectedAdSets = new Set(selectedEntities.filter((row) => row.entity_type === "ad_set").map((row) => row.external_id));
@@ -452,7 +453,7 @@ function ActivityList({ items }: { items: Communication[] }) { return <div class
 
 function ManagePage() {
   const [open, setOpen] = useState(false); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setMessage(""); const form = new FormData(event.currentTarget); const payload = Object.fromEntries(form.entries()); try { const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", ...payload }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not add account"); setMessage("Account created. Refreshing…"); setTimeout(() => window.location.assign(`/accounts/${body.client.slug}`), 700); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not add account"); } finally { setBusy(false); } }
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setMessage(""); const form = new FormData(event.currentTarget); const payload = Object.fromEntries(form.entries()); try { const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", ...payload }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not add account"); setMessage("Account created. Refreshing…"); setTimeout(() => window.location.assign(`/accounts/${body.client.id}`), 700); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not add account"); } finally { setBusy(false); } }
   return <>
     <PageHeader kicker="COMPANY ADMIN" title="Manage" copy="Company-wide tools only." action={<button className="primary-button" onClick={() => setOpen(true)}>＋ Add a client</button>} />
     <section className="panel manage-empty"><div className="manage-mark">＋</div><span className="kicker">CLIENT MANAGEMENT</span><h2>Add a DetailEngine client</h2><p>Account-specific connectors and settings live inside each client account.</p><button className="primary-button" onClick={() => setOpen(true)}>Add a client</button>{message && <p className="manage-message">{message}</p>}</section>
@@ -460,7 +461,7 @@ function ManagePage() {
   </>;
 }
 
-function ReportModal({ type, data, onClose }: { type: "leads" | "ads"; data: CommandCentreData; onClose: () => void }) { const [start, setStart] = useState(monthStart()); const [end, setEnd] = useState(isoToday()); const openReport = () => { const url = new URL("/api/report", window.location.origin); url.searchParams.set("slug", data.client.slug); url.searchParams.set("type", type); url.searchParams.set("from", start); url.searchParams.set("to", end); window.open(url.toString(), "_blank", "noopener,noreferrer"); }; return <div className="modal-backdrop" onClick={onClose}><section className="modal-card report-modal" onClick={(event) => event.stopPropagation()}><header><div><span className="kicker">{type === "leads" ? "LEAD REPORT" : "AD METRICS REPORT"}</span><h2>Choose the reporting range</h2></div><button onClick={onClose}>×</button></header><p>Defaults to month-to-date. Choose any valid range before generating the PDF.</p><div className="form-grid"><label><span>FROM</span><input type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span>TO</span><input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label></div><button className="primary-button" disabled={!start || !end || start > end} onClick={openReport}>Generate PDF →</button></section></div>; }
+function ReportModal({ type, data, onClose }: { type: "leads" | "ads"; data: CommandCentreData; onClose: () => void }) { const [start, setStart] = useState(monthStart()); const [end, setEnd] = useState(isoToday()); const openReport = () => { const url = new URL("/api/report", window.location.origin); url.searchParams.set("client_id", data.client.id); url.searchParams.set("type", type); url.searchParams.set("from", start); url.searchParams.set("to", end); window.open(url.toString(), "_blank", "noopener,noreferrer"); }; return <div className="modal-backdrop" onClick={onClose}><section className="modal-card report-modal" onClick={(event) => event.stopPropagation()}><header><div><span className="kicker">{type === "leads" ? "LEAD REPORT" : "AD METRICS REPORT"}</span><h2>Choose the reporting range</h2></div><button onClick={onClose}>×</button></header><p>Defaults to month-to-date. Choose any valid range before generating the PDF.</p><div className="form-grid"><label><span>FROM</span><input type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span>TO</span><input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label></div><button className="primary-button" disabled={!start || !end || start > end} onClick={openReport}>Generate PDF →</button></section></div>; }
 
 function LeadDrawer({ lead, communications, onClose }: { lead: Lead; communications: Communication[]; onClose: () => void }) { return <div className="drawer-backdrop" onClick={onClose}><aside className="drawer" onClick={(event) => event.stopPropagation()}><header><span className="kicker">LEAD RECORD</span><button onClick={onClose}>×</button></header><div className="drawer-person"><span>{initials(lead.full_name)}</span><div><h2>{lead.full_name}</h2><p>{lead.phone} · {lead.email}</p></div></div><div className="drawer-status"><StatusPill status={lead.qualification_status || "pending"} /><StatusPill status={lead.outcome ? lead.outcome.status : "not transferred"} /></div><section><span className="kicker">ATTRIBUTION</span><div className="stat-matrix"><SmallStat label="Source" value={lead.source || "—"} /><SmallStat label="Campaign" value={lead.campaign || "—"} /><SmallStat label="Submitted" value={shortDate(lead.submitted_at)} /><SmallStat label="Speed to lead" value={lead.speed_to_lead_minutes ? `${lead.speed_to_lead_minutes}m` : "—"} /></div></section><section><span className="kicker">QUALIFICATION</span><h3>{lead.is_qualified ? "Qualified opportunity" : statusText(lead.qualification_status || "Pending")}</h3><p>{lead.qualification_reason || lead.not_qualified_reason || "No qualification note is stored yet."}</p></section>{lead.outcome && <section><span className="kicker">TRANSFER OUTCOME</span><h3>{statusText(lead.outcome.status)}</h3><p>{lead.outcome.feedback_note || lead.outcome.lost_reason || "Awaiting client detail."}</p>{lead.outcome.status === "closed" && <div className="ticket">Collected ticket <strong>{money.format(lead.outcome.collected_revenue)}</strong></div>}</section>}<section><span className="kicker">GHL CONVERSATION</span><ActivityList items={communications} /></section></aside></div>; }
 

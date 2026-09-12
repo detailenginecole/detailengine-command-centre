@@ -78,3 +78,16 @@ npm test
 
 This runs ESLint and a full Next.js production build. GitHub Actions runs the
 same check on `main`, `production`, and `staging`.
+
+
+## Canonical client identity
+
+Every client-specific request uses the permanent UUID from Supabase clients.id. This is the same value used by the other DetailEngine dashboard, client memberships, leads, invoices, reporting cycles and integration records. External provider IDs are scoped mappings under this UUID; business names and slugs are not new account identities. Never generate a separate dashboard client ID.
+
+An omitted selection may choose the first accessible account. An explicit empty, malformed, unknown or inaccessible ID must not fall back to another account. UUID + conflicting slug is rejected. RLS/authentication still determines access; knowing a UUID never grants it. See the Master Drive platform client-identity-contract.md and DEC-025.
+
+Generated account links, refreshes, report requests, account edits and ad-selection storage keys use the UUID. The historical /accounts/[slug] route still accepts a unique legacy slug at its entry boundary, then carries the resolved UUID through subsequent requests. Duplicate slug matches and conflicting identifiers are rejected. Returned data/report identities are checked before use.
+
+Staging uses isolated command-centre-data-staging, command-centre-admin-staging and command-centre-report-staging functions, plus the existing command-centre-staging wrapper. The isolated data/report services require the existing internal sync secret; admin and wrapper requests require an authenticated user. Production endpoints remain at the preceding release until explicitly approved. Before promotion, publish the same data function as command-centre-data-production, point the production wrapper/report to it, and publish the tested admin/report revisions under their production endpoint names before promoting the frontend staging commit. Do not promote only the frontend: old production endpoints still accept slug requests.
+
+Identity tests exercise the real Edge handlers with synthetic provider responses: same UUID after renaming, unknown/conflicting/duplicate selections, client-scoped detail reads, UUID-only writes and wrong-account report responses. They perform no network writes.

@@ -52,7 +52,7 @@ export function AccountStatusWorkspace({
   async function mutate(action: string, payload: Record<string, unknown> = {}) {
     setBusy(action); setMessage("");
     try {
-      const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, client_slug: data.client.slug, ...payload }) });
+      const response = await fetch("/api/manage-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, action, client_id: data.client.id }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not save change");
       setMessage("Saved to DetailEngine.");

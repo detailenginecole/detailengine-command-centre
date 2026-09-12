@@ -19,9 +19,9 @@ export async function GET(request: Request) {
   if (token === undefined) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const source = new URL(request.url);
   const target = new URL(endpoint);
-  for (const key of ["slug", "from", "to", "month", "cycle_id"]) {
+  for (const key of ["client_id", "slug", "from", "to", "month", "cycle_id"]) {
     const value = source.searchParams.get(key);
-    if (value) target.searchParams.set(key, value);
+    if (value !== null) target.searchParams.set(key, value);
   }
   const secret = process.env.DETAILENGINE_SYNC_SECRET;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

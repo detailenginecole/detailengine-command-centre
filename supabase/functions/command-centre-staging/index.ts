@@ -33,8 +33,8 @@ async function allowedUser(request: Request) {
   return user?.id && email.endsWith(`@${allowedEmailDomain}`) ? user : null;
 }
 async function loadBase(url: URL, from?: string, to?: string) {
-  const target = new URL(`${supabaseUrl}/functions/v1/command-centre-demo`);
-  for (const key of ["slug", "month"]) { const value = url.searchParams.get(key); if (value) target.searchParams.set(key, value); }
+  const target = new URL(`${supabaseUrl}/functions/v1/command-centre-data-staging`);
+  for (const key of ["client_id", "slug", "month"]) { const value = url.searchParams.get(key); if (value !== null) target.searchParams.set(key, value); }
   const start = from || url.searchParams.get("from");
   const end = to || url.searchParams.get("to");
   if (start) target.searchParams.set("from", start);
@@ -42,6 +42,8 @@ async function loadBase(url: URL, from?: string, to?: string) {
   const response = await fetch(target, { headers: { "x-detailengine-secret": syncSecret } });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Could not load command centre");
+  const requestedId = url.searchParams.get("client_id");
+  if (requestedId !== null && payload.client?.id !== requestedId.toLowerCase()) throw new Error("Account identity mismatch");
   return payload;
 }
 const num = (value: unknown) => { const parsed = Number(value || 0); return Number.isFinite(parsed) ? parsed : 0; };
@@ -78,7 +80,7 @@ function scopeMeta(entities: Row[], filterValue: unknown) {
   return { campaigns, adSets, ads, entities: [...campaigns, ...adSets, ...ads], campaignExternalIds, live };
 }
 
-function aggregateDaily(rows: Row[]) {
+function aggregateDaily(rows: Row[]): Row[] {
   const days = new Map<string, Row>();
   for (const row of rows) {
     const date = dateOnly(row.metric_date);
@@ -200,7 +202,7 @@ async function loadWorkspaceSnapshots(workspaceClients: Row[], requestUrl: URL) 
     rest("clients?select=id,slug,lifecycle_status,onboarding_date,launch_date,created_at"),
     rest("reporting_periods?select=*&order=starts_on.asc"),
   ]);
-  const databaseById = new Map(databaseClients.map((client: Row) => [String(client.id), client]));
+  const databaseById = new Map<string, Row>(databaseClients.map((client: Row) => [String(client.id), client]));
   const cyclesByClient = grouped(allCycles, "client_id");
 
   return Promise.all(workspaceClients.map(async (workspaceClient: Row) => {
@@ -209,7 +211,8 @@ async function loadWorkspaceSnapshots(workspaceClients: Row[], requestUrl: URL) 
       const cycle = selectedCurrentCycle(clientCycles, today);
       const effectiveEnd = cycle ? (cycle.ends_on < today ? cycle.ends_on : today < cycle.starts_on ? cycle.starts_on : today) : today;
       const detailUrl = new URL(requestUrl);
-      detailUrl.searchParams.set("slug", workspaceClient.slug);
+      detailUrl.searchParams.delete("slug");
+      detailUrl.searchParams.set("client_id", workspaceClient.id);
       detailUrl.searchParams.delete("cycle_id");
       detailUrl.searchParams.delete("from");
       detailUrl.searchParams.delete("to");
@@ -296,6 +299,8 @@ Deno.serve(async (request) => {
     if (selectedCycle && (requestedCycle || (!requestUrl.searchParams.get("from") && !requestUrl.searchParams.get("to")))) {
       const today = new Date().toISOString().slice(0, 10);
       const effectiveEnd = selectedCycle.ends_on < today ? selectedCycle.ends_on : today < selectedCycle.starts_on ? selectedCycle.starts_on : today;
+      requestUrl.searchParams.delete("slug");
+      requestUrl.searchParams.set("client_id", base.client.id);
       base = await loadBase(requestUrl, selectedCycle.starts_on, effectiveEnd);
     }
     selectedCycle = cycles.find((cycle: Row) => cycle.id === selectedCycle?.id) || null;

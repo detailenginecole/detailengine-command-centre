@@ -1,3 +1,4 @@
+import { isClientId } from "./client-identity";
 import type { CommandCentreData } from "../components/CommandCentre";
 import { isAuthEnabled } from "./auth";
 import { createSupabaseServerClient } from "./supabase/server";
@@ -6,9 +7,9 @@ export const DATA_URL = process.env.VERCEL_ENV === "production"
   ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-production"
   : "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-staging";
 
-export async function loadCommandCentre(slug?: string): Promise<CommandCentreData> {
+export async function loadCommandCentre(idOrLegacySlug?: string): Promise<CommandCentreData> {
   const url = new URL(DATA_URL);
-  if (slug) url.searchParams.set("slug", slug);
+  if (idOrLegacySlug !== undefined) url.searchParams.set(isClientId(idOrLegacySlug) ? "client_id" : "slug", idOrLegacySlug);
   const secret = process.env.DETAILENGINE_SYNC_SECRET;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const token = isAuthEnabled()
@@ -31,9 +32,11 @@ export async function loadCommandCentre(slug?: string): Promise<CommandCentreDat
     });
     throw new Error("Could not load the DetailEngine command centre");
   }
-  return response.json() as Promise<CommandCentreData>;
+  const data = await response.json() as CommandCentreData;
+  if (isClientId(idOrLegacySlug) && data.client.id !== idOrLegacySlug.toLowerCase()) throw new Error("Account identity mismatch");
+  return data;
 }
 
-export function dataUrl(slug?: string) {
-  return slug ? `/api/command-centre?slug=${encodeURIComponent(slug)}` : "/api/command-centre";
+export function dataUrl(clientId?: string) {
+  return clientId ? `/api/command-centre?client_id=${encodeURIComponent(clientId)}` : "/api/command-centre";
 }

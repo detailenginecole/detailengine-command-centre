@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getDetailEngineUser, isAuthEnabled } from "../../lib/auth";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 
-const endpoint = "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-admin";
+const endpoint = process.env.VERCEL_ENV === "production"
+  ? "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-admin"
+  : "https://pcegpghnijnesltfbbaa.supabase.co/functions/v1/command-centre-admin-staging";
 
 export async function POST(request: Request) {
   let token: string | null = null;
