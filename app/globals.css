@@ -74,6 +74,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .primary-button:disabled { opacity: .5; cursor: not-allowed; }
 
 .metric-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 15px 0; }
+.account-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
 .metric-card { min-height: 128px; padding: 17px; overflow: hidden; position: relative; border: 1.5px solid var(--ink); border-radius: 18px 6px 18px 6px; background: var(--card); box-shadow: 4px 4px 0 rgba(21,21,18,.1); }
 .metric-card::after { content: ""; position: absolute; right: -25px; bottom: -29px; width: 86px; height: 86px; border: 16px solid rgba(21,21,18,.05); border-radius: 50%; }
 .metric-card > span, .metric-card > strong, .metric-card > small { display: block; }.metric-card > span { color: var(--muted); font: 750 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }.metric-card > strong { margin: 12px 0 7px; font-size: clamp(26px,3vw,39px); line-height: .88; letter-spacing: -.055em; }.metric-card > small { color: var(--muted); font-size: 12px; }.tone-orange { background: var(--orange-pale); }.tone-green { background: var(--green-pale); }.tone-blue { background: var(--blue-pale); }.tone-yellow { background: #fff1ad; }

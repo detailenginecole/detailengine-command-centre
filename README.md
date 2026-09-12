@@ -10,6 +10,7 @@ the source of truth and supplies the dashboard data through Edge Functions.
 
 - Company-wide overview and account list
 - Per-account performance, ROI, leads, outcomes, and GHL history
+- Account overview headline metrics: total leads, qualified leads, and warm transfers
 - Meta campaign, ad set, and ad detail
 - DetailEngine advice-only media intelligence
 - Live account identity/lifecycle, sequential monthly cycles with per-cycle budgets and transfer goals, onboarding, Meta/GHL integration management, and feedback routing
