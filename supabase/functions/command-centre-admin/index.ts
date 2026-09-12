@@ -1,3 +1,4 @@
+import {isClientId} from "../../../app/lib/client-identity.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const allowedEmailDomain = (Deno.env.get("DETAILENGINE_ALLOWED_EMAIL_DOMAIN") || "getdetailengine.com").toLowerCase();
@@ -56,9 +57,11 @@ Deno.serve(async (request) => {
     const clientActions = ["add_note", "submit_support", "update_targets", "save_connector", "save_meta_integration", "update_account", "save_cycle", "update_onboarding_step", "post_message"];
     let selectedClient: Record<string, unknown> | null = null;
     if (clientActions.includes(action)) {
-      const rows = await rest(`clients?select=id,organization_id,slug,display_name,lifecycle_status&slug=eq.${encodeURIComponent(clean(payload.client_slug))}&limit=1`);
+      if (!isClientId(payload.client_id)) return json({error: "Valid client_id required"}, 400);
+      const rows = await rest(`clients?select=id,organization_id,slug,display_name,lifecycle_status&id=eq.${encodeURIComponent(payload.client_id.toLowerCase())}&limit=1`);
       selectedClient = rows?.[0] || null;
       if (!selectedClient) return json({ error: "Account not found" }, 404);
+      if (payload.client_slug !== undefined && payload.client_slug !== selectedClient.slug) return json({error: "Account identity mismatch"}, 400);
     }
 
     if (action === "update_account") {
