@@ -64,3 +64,10 @@ Keep the Google OAuth redirect URI pointed at the Supabase callback URI above.
 - Never commit Google client secrets, Supabase secret/service-role keys, Vercel tokens, or other private credentials.
 - Browser-safe Supabase publishable keys are not authorization by themselves; database access must remain protected by appropriate RLS policies.
 - Do not weaken authentication or domain restrictions to make a deployment pass.
+
+
+## Internal access boundary
+
+- Only emails in the exact `@getdetailengine.com` domain may access the internal Command Centre. External Client Portal memberships or owner roles never grant internal access.
+- Keep `DETAILENGINE_ALLOWED_EMAIL_DOMAIN=getdetailengine.com` and authentication enabled in every deployed environment. The local preview flag must never disable deployed authentication.
+- Check the verified Auth identity server-side and at user-facing API boundaries; never authorize from editable profile email/role metadata. Preserve this independently of Client Portal access rules.

@@ -76,3 +76,29 @@ test('transient read failures retry exactly once with the same client ID',async(
   assert.equal(failed.calls.filter(c=>c.url.pathname.endsWith('/client_notes')).length,expectedReads);
  }
 });
+
+test('internal dashboard endpoints reject external client users before any business read or write',async()=>{
+ for(const name of ['command-centre-production','command-centre-staging','command-centre-admin','command-centre-admin-staging','command-centre-report','command-centre-report-staging']){
+  for(const email of ['client@gmail.com','staff@getdetailengine.com.example.org','staff@sub.getdetailengine.com','getdetailengine.com@example.org']){
+   const actor={id:'external-client',email,email_confirmed_at:'2026-09-12',user_metadata:{email:'staff@getdetailengine.com',role:'owner'}};
+   const e=await endpoint(name,undefined,undefined,actor);
+   const body=name.includes('admin')?{action:'add_note',client_id:b.id,body:'Must never be saved'}:undefined;
+   const result=await e.run('client_id='+b.id,body,{Authorization:'Bearer synthetic-external','Content-Type':'application/json'});
+   assert.equal(result.status,401,`${name} must deny ${email}`);
+   assert.equal(e.calls.length,1);
+   assert.equal(e.calls[0].url.pathname,'/auth/v1/user');
+  }
+ }
+});
+
+test('internal frontend identity rejects outside emails despite portal membership or forged metadata',async()=>{
+ const source=await readFile(new URL('../app/lib/auth.ts',import.meta.url),'utf8');
+ for(const email of ['client@gmail.com','staff@getdetailengine.com.attacker.test','staff@sub.getdetailengine.com']){
+  const exports={};
+  const user={id:'external-client',email,user_metadata:{email:'staff@getdetailengine.com',role:'owner'},app_metadata:{client_memberships:[b.id]}};
+  const require=name=>name==='next/navigation'?{redirect:()=>{throw new Error('redirected');}}:{createSupabaseServerClient:async()=>({auth:{getUser:async()=>({data:{user}})}})};
+  new Function('exports','require','process',compile(source))(exports,require,{env:{DETAILENGINE_GOOGLE_AUTH_ENABLED:'true',DETAILENGINE_ALLOWED_EMAIL_DOMAIN:'getdetailengine.com'}});
+  assert.equal(await exports.getDetailEngineUser(),null);
+  await assert.rejects(()=>exports.requireDetailEngineUser('/'),/redirected/);
+ }
+});

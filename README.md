@@ -56,8 +56,9 @@ https://your-staging-domain.com/auth/callback
 http://localhost:3000/auth/callback
 ```
 
-The app allows signed-in users only when their verified email ends with the
-domain in `DETAILENGINE_ALLOWED_EMAIL_DOMAIN`.
+The internal dashboard permits only `@getdetailengine.com` users. Keep `DETAILENGINE_ALLOWED_EMAIL_DOMAIN=getdetailengine.com` and authentication enabled in deployed environments. Client Portal membership, ownership, invitations and external email/password accounts never grant internal-dashboard access. The app and user-facing Edge Functions validate the Auth user’s email independently of profile metadata. Google OAuth also restricts sign-in to the organization.
+
+Verified 2026-09-12: the authorized external Gmail test identity received Google `403 org_internal`; deployed production/admin/report function sources match the reviewed repository. Thirteen tests pass, including external/lookalike/subdomain identities denied before business reads or writes and frontend denial despite forged profile metadata. No runtime restriction change was required.
 
 ## Local development
 
