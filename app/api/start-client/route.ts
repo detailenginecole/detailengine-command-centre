@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     niche: clean(source.niche) || "Auto detailing",
     general_location: clean(source.general_location),
     timezone: clean(source.timezone) || "America/New_York",
+    checkout_mode: "embedded",
   };
 
   if (

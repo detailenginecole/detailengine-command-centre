@@ -30,7 +30,7 @@ a staging domain to that branch in the Vercel project settings.
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` for local work. Add the same five variables
+Copy `.env.example` to `.env.local` for local work. Add the same six variables
 to Vercel for Production, Preview, and Development as appropriate.
 
 Never place the Supabase secret key or `service_role` key in a `NEXT_PUBLIC_`
@@ -98,15 +98,18 @@ Read-only database calls in the data/wrapper functions retry a 502/503/504 respo
 
 ## Sales-call client start
 
-The internal `/start` route is a focused staff-only sales handoff. It collects
-the business name, initial owner, owner email and Florida market, then calls the
-authenticated `client-setup-payment` Edge Function. That function creates the
-live $1,000 CAD Stripe Checkout. Card data stays on Stripe.
+The internal `/start` route is a plain staff-only client and payment form. It
+collects the business name, initial owner, owner email and Florida market, then
+calls the authenticated `client-setup-payment` Edge Function. The live $1,000
+CAD Checkout is embedded in the same page with Stripe.js. Card data is entered
+inside Stripe's iframe and never reaches DetailEngine's application servers.
 
 After a verified payment, the existing webhook reserves and uses the canonical
 `clients.id`, creates the onboarding records and provider placeholders, assigns
 the buyer as the initial Client Portal owner, and sends the setup invitation.
-Repeated submissions for the same business and email reuse an open checkout.
+Repeated submissions for the same business and email reuse a compatible open
+checkout. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
+be the live publishable key for the same Stripe account as the server secret.
 
 The route is protected by the same verified `@getdetailengine.com` server-side
 identity boundary as the Command Centre, and the payment Edge Function checks

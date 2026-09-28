@@ -8,6 +8,7 @@ export async function SalesStartPage({ returnTo = "/start" }: { returnTo?: strin
     <SalesStartClient
       staffName={user?.name || "DetailEngine team"}
       staffEmail={user?.email || ""}
+      stripePublishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
     />
   );
 }
