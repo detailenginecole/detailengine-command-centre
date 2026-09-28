@@ -100,15 +100,18 @@ Read-only database calls in the data/wrapper functions retry a 502/503/504 respo
 
 The internal `/start` route is a plain staff-only client and payment form. It
 collects the business name, initial owner, owner email and Florida market, then
-calls the authenticated `client-setup-payment` Edge Function. The live $1,000
-CAD Checkout is embedded in the same page with Stripe.js. Card data is entered
-inside Stripe's iframe and never reaches DetailEngine's application servers.
+calls the authenticated `client-setup-payment` Edge Function. Staff can either
+open the live $1,000 CAD Checkout inside the page with Stripe.js or create a
+client-specific Stripe-hosted payment link to copy, email or open. In both
+paths, card data is entered inside Stripe's UI and never reaches DetailEngine's
+application servers.
 
 After a verified payment, the existing webhook reserves and uses the canonical
 `clients.id`, creates the onboarding records and provider placeholders, assigns
 the buyer as the initial Client Portal owner, and sends the setup invitation.
-Repeated submissions for the same business and email reuse a compatible open
-checkout. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
+Repeated submissions for the same business, email and compatible display mode
+reuse an open checkout. Switching between embedded and hosted Checkout expires
+the incompatible open session before creating the replacement. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
 be the live publishable key for the same Stripe account as the server secret.
 
 The route is protected by the same verified `@getdetailengine.com` server-side

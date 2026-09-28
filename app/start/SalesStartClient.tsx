@@ -5,8 +5,11 @@ import Script from "next/script";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import styles from "./start.module.css";
 
+type PaymentMode = "embedded" | "hosted";
+
 type CheckoutResult = {
-  checkout_client_secret: string;
+  checkout_client_secret?: string;
+  checkout_url?: string;
   setup_intent_id: string;
   reused?: boolean;
 };
@@ -43,6 +46,9 @@ const initialForm: FormState = {
   location: "",
 };
 
+const previewCheckoutUrl =
+  "https://checkout.stripe.com/c/pay/cs_live_detailengine_preview";
+
 export function SalesStartClient({
   staffName,
   staffEmail,
@@ -56,10 +62,13 @@ export function SalesStartClient({
 }) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitted, setSubmitted] = useState<FormState | null>(null);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | null>(null);
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [stripeReady, setStripeReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showHostedPreview, setShowHostedPreview] = useState(false);
   const [error, setError] = useState("");
   const checkoutHost = useRef<HTMLDivElement>(null);
   const checkoutInstance = useRef<EmbeddedCheckout | null>(null);
@@ -69,18 +78,37 @@ export function SalesStartClient({
     setError("");
   }
 
-  async function continueToPayment(event: FormEvent<HTMLFormElement>) {
+  function continueToPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError("");
-    setComplete(false);
     setSubmitted({ ...form });
+    setPaymentMode(null);
+    setCheckout(null);
+    setComplete(false);
+    setError("");
+  }
+
+  async function choosePayment(mode: PaymentMode) {
+    if (!submitted) return;
+
+    setBusy(true);
+    setPaymentMode(mode);
+    setCheckout(null);
+    setError("");
+    setCopied(false);
+    setShowHostedPreview(false);
 
     if (previewMode) {
-      setCheckout({
-        checkout_client_secret: "preview",
-        setup_intent_id: "preview",
-      });
+      setCheckout(
+        mode === "embedded"
+          ? {
+              checkout_client_secret: "preview",
+              setup_intent_id: "preview",
+            }
+          : {
+              checkout_url: previewCheckoutUrl,
+              setup_intent_id: "preview",
+            },
+      );
       setBusy(false);
       return;
     }
@@ -90,21 +118,27 @@ export function SalesStartClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          business_name: form.businessName,
-          full_name: form.fullName,
-          email: form.email,
+          business_name: submitted.businessName,
+          full_name: submitted.fullName,
+          email: submitted.email,
           niche: "Auto detailing",
-          general_location: form.location,
+          general_location: submitted.location,
           timezone: "America/New_York",
+          checkout_mode: mode,
         }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.checkout_client_secret) {
+      const expectedResult =
+        mode === "embedded"
+          ? payload?.checkout_client_secret
+          : payload?.checkout_url;
+
+      if (!response.ok || !expectedResult) {
         throw new Error(payload?.error || "Could not start the payment.");
       }
       setCheckout(payload);
     } catch (caught) {
-      setSubmitted(null);
+      setPaymentMode(null);
       setError(
         caught instanceof Error ? caught.message : "Could not start the payment.",
       );
@@ -116,6 +150,7 @@ export function SalesStartClient({
   useEffect(() => {
     if (
       previewMode ||
+      paymentMode !== "embedded" ||
       !checkout?.checkout_client_secret ||
       !stripeReady ||
       !stripePublishableKey ||
@@ -132,7 +167,7 @@ export function SalesStartClient({
         if (!stripe) throw new Error("Stripe could not be loaded.");
 
         const instance = await stripe.initEmbeddedCheckout({
-          clientSecret: checkout!.checkout_client_secret,
+          clientSecret: checkout!.checkout_client_secret!,
           onComplete: () => {
             checkoutInstance.current?.destroy();
             checkoutInstance.current = null;
@@ -161,15 +196,28 @@ export function SalesStartClient({
       checkoutInstance.current?.destroy();
       checkoutInstance.current = null;
     };
-  }, [checkout, previewMode, stripePublishableKey, stripeReady]);
+  }, [
+    checkout,
+    paymentMode,
+    previewMode,
+    stripePublishableKey,
+    stripeReady,
+  ]);
 
-  function editDetails() {
+  function changeMethod() {
     checkoutInstance.current?.destroy();
     checkoutInstance.current = null;
+    setPaymentMode(null);
     setCheckout(null);
-    setSubmitted(null);
     setComplete(false);
+    setCopied(false);
+    setShowHostedPreview(false);
     setError("");
+  }
+
+  function editDetails() {
+    changeMethod();
+    setSubmitted(null);
   }
 
   function startAnother() {
@@ -177,7 +225,25 @@ export function SalesStartClient({
     setForm(initialForm);
   }
 
-  const paymentView = checkout && submitted ? { checkout, submitted } : null;
+  async function copyPaymentLink() {
+    if (!checkout?.checkout_url) return;
+    await navigator.clipboard.writeText(checkout.checkout_url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  const paymentView =
+    checkout && submitted && paymentMode
+      ? { checkout, submitted, paymentMode }
+      : null;
+  const emailPaymentHref =
+    paymentView?.paymentMode === "hosted" && paymentView.checkout.checkout_url
+      ? `mailto:${encodeURIComponent(paymentView.submitted.email)}?subject=${encodeURIComponent(
+          "DetailEngine setup payment",
+        )}&body=${encodeURIComponent(
+          `Hi ${paymentView.submitted.fullName},\n\nUse this secure Stripe link to pay the $1,000 CAD DetailEngine setup fee:\n\n${paymentView.checkout.checkout_url}\n\nYour account setup will begin after payment is confirmed.`,
+        )}`
+      : "";
 
   return (
     <main className={styles.page}>
@@ -209,22 +275,20 @@ export function SalesStartClient({
               Start another client
             </button>
           </div>
-        ) : paymentView ? (
+        ) : paymentView?.paymentMode === "embedded" ? (
           <div className={styles.payment}>
             <div className={styles.sectionHeading}>
               <div>
+                <span className={styles.stepLabel}>ENTER CARD HERE</span>
                 <h1>Payment</h1>
                 <p>{paymentView.submitted.businessName} · {paymentView.submitted.email}</p>
               </div>
-              <button className={styles.textButton} type="button" onClick={editDetails}>
-                Edit details
+              <button className={styles.textButton} type="button" onClick={changeMethod}>
+                Change method
               </button>
             </div>
 
-            <div className={styles.order}>
-              <span>Setup &amp; implementation</span>
-              <strong>$1,000 CAD</strong>
-            </div>
+            <OrderSummary />
 
             {paymentView.checkout.reused && (
               <div className={styles.notice}>
@@ -233,15 +297,7 @@ export function SalesStartClient({
             )}
 
             {previewMode ? (
-              <div className={styles.previewPayment} aria-label="Stripe payment form preview">
-                <span>Card information</span>
-                <div>1234 1234 1234 1234</div>
-                <div className={styles.previewRow}><span>MM / YY</span><span>CVC</span></div>
-                <span>Cardholder name</span>
-                <div>Full name on card</div>
-                <button type="button" disabled>Pay $1,000 CAD</button>
-                <small>Visual preview only — no payment is created.</small>
-              </div>
+              <PaymentFormPreview note="Standard pathway — the client enters their card on this screen." />
             ) : (
               <>
                 {!stripePublishableKey && (
@@ -255,6 +311,118 @@ export function SalesStartClient({
 
             {error && <div className={styles.error} role="alert">{error}</div>}
             <p className={styles.secure}>Secure payment form provided by Stripe.</p>
+          </div>
+        ) : paymentView?.paymentMode === "hosted" ? (
+          <div className={styles.payment}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <span className={styles.stepLabel}>SEND PAYMENT LINK</span>
+                <h1>Secure payment link</h1>
+                <p>Send this link to {paymentView.submitted.email}.</p>
+              </div>
+              <button className={styles.textButton} type="button" onClick={changeMethod}>
+                Change method
+              </button>
+            </div>
+
+            <OrderSummary />
+
+            {paymentView.checkout.reused && (
+              <div className={styles.notice}>
+                The open payment session for this client was reused.
+              </div>
+            )}
+
+            <div className={styles.linkBox}>
+              <span>Stripe Checkout link</span>
+              <code>{paymentView.checkout.checkout_url}</code>
+            </div>
+
+            <div className={styles.linkActions}>
+              <button className={styles.primary} type="button" onClick={copyPaymentLink}>
+                {copied ? "Link copied" : "Copy payment link"}
+              </button>
+              <a className={styles.secondary} href={emailPaymentHref}>
+                Email payment link
+              </a>
+            </div>
+
+            {previewMode ? (
+              <button
+                className={styles.outlineButton}
+                type="button"
+                onClick={() => setShowHostedPreview((current) => !current)}
+              >
+                {showHostedPreview ? "Hide client view" : "Preview what the client sees"}
+              </button>
+            ) : (
+              <a
+                className={styles.outlineButton}
+                href={paymentView.checkout.checkout_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open secure payment page
+              </a>
+            )}
+
+            {showHostedPreview && (
+              <div className={styles.hostedPreview}>
+                <div className={styles.hostedBar}>
+                  <span>Client view</span>
+                  <strong>checkout.stripe.com</strong>
+                </div>
+                <div className={styles.hostedBody}>
+                  <div className={styles.hostedSummary}>
+                    <span>DetailEngine</span>
+                    <h2>$1,000 CAD</h2>
+                    <p>Setup &amp; implementation</p>
+                  </div>
+                  <PaymentFormPreview note="Visual preview only — no payment is created." />
+                </div>
+              </div>
+            )}
+
+            <p className={styles.secure}>
+              The client enters payment details directly on Stripe. The same
+              verified-payment workflow creates their account and invitation.
+            </p>
+          </div>
+        ) : submitted ? (
+          <div className={styles.payment}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <h1>How will they pay?</h1>
+                <p>{submitted.businessName} · $1,000 CAD</p>
+              </div>
+              <button className={styles.textButton} type="button" onClick={editDetails}>
+                Edit details
+              </button>
+            </div>
+
+            <div className={styles.choices}>
+              <button
+                className={styles.choice}
+                type="button"
+                disabled={busy}
+                onClick={() => void choosePayment("embedded")}
+              >
+                <strong>Enter card here</strong>
+                <span>Use Stripe’s secure payment form on this screen.</span>
+              </button>
+              <button
+                className={styles.choice}
+                type="button"
+                disabled={busy}
+                onClick={() => void choosePayment("hosted")}
+              >
+                <strong>Send secure payment link</strong>
+                <span>Let the client pay privately on checkout.stripe.com.</span>
+              </button>
+            </div>
+
+            {busy && <div className={styles.notice}>Creating the secure payment…</div>}
+            {error && <div className={styles.error} role="alert">{error}</div>}
           </div>
         ) : (
           <>
@@ -314,16 +482,11 @@ export function SalesStartClient({
                 />
               </label>
 
-              <div className={styles.order}>
-                <span>Setup &amp; implementation</span>
-                <strong>$1,000 CAD</strong>
-              </div>
+              <OrderSummary />
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
-              <button className={styles.primary} disabled={busy}>
-                {busy ? "Loading payment…" : "Continue to payment"}
-              </button>
+              <button className={styles.primary}>Continue to payment</button>
             </form>
           </>
         )}
@@ -333,5 +496,28 @@ export function SalesStartClient({
         Signed in as {staffEmail || staffName}
       </span>
     </main>
+  );
+}
+
+function OrderSummary() {
+  return (
+    <div className={styles.order}>
+      <span>Setup &amp; implementation</span>
+      <strong>$1,000 CAD</strong>
+    </div>
+  );
+}
+
+function PaymentFormPreview({ note }: { note: string }) {
+  return (
+    <div className={styles.previewPayment} aria-label="Stripe payment form preview">
+      <span>Card information</span>
+      <div>1234 1234 1234 1234</div>
+      <div className={styles.previewRow}><span>MM / YY</span><span>CVC</span></div>
+      <span>Cardholder name</span>
+      <div>Full name on card</div>
+      <button type="button" disabled>Pay $1,000 CAD</button>
+      <small>{note}</small>
+    </div>
   );
 }
