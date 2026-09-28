@@ -12,9 +12,10 @@ test("sales start route preserves the internal staff boundary", () => {
   assert.match(page, /requireDetailEngineUser/);
 });
 
-test("checkout creation uses the verified embedded setup workflow", () => {
+test("checkout creation allows only the two verified setup pathways", () => {
   assert.match(api, /client-setup-payment/);
-  assert.match(api, /checkout_mode: "embedded"/);
+  assert.match(api, /\["embedded", "hosted"\]\.includes\(checkoutMode\)/);
+  assert.match(api, /checkout_mode: checkoutMode/);
   assert.match(api, /Authorization: `Bearer \$\{session\.access_token\}`/);
   assert.match(api, /cache: "no-store"/);
   assert.doesNotMatch(api, /service[_-]?role/i);
@@ -30,6 +31,15 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /Secure payment form provided by Stripe/);
   assert.match(client, /\$1,000 CAD/);
   assert.doesNotMatch(client, /card_number|payment_method_data/);
+});
+
+test("sales UI exposes both on-screen and client-link pathways", () => {
+  assert.match(client, /Enter card here/);
+  assert.match(client, /Send secure payment link/);
+  assert.match(client, /checkout_url/);
+  assert.match(client, /Copy payment link/);
+  assert.match(client, /Email payment link/);
+  assert.match(client, /Preview what the client sees/);
 });
 
 test("sales UI contains no promotional sales copy", () => {
