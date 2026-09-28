@@ -94,3 +94,22 @@ Staging uses isolated command-centre-data-staging, command-centre-admin-staging 
 Identity tests exercise the real Edge handlers with synthetic provider responses: same UUID after renaming, unknown/conflicting/duplicate selections, client-scoped detail reads, UUID-only writes and wrong-account report responses. They perform no network writes.
 
 Read-only database calls in the data/wrapper functions retry a 502/503/504 response once after 250 ms, preserving the exact request and client UUID. Other failures and account mutations are not retried. This addresses intermittent upstream timeouts observed during production verification.
+
+
+## Sales-call client start
+
+The internal `/start` route is a focused staff-only sales handoff. It collects
+the business name, initial owner, owner email and Florida market, then calls the
+authenticated `client-setup-payment` Edge Function. That function creates the
+live $1,000 CAD Stripe Checkout. Card data stays on Stripe.
+
+After a verified payment, the existing webhook reserves and uses the canonical
+`clients.id`, creates the onboarding records and provider placeholders, assigns
+the buyer as the initial Client Portal owner, and sends the setup invitation.
+Repeated submissions for the same business and email reuse an open checkout.
+
+The route is protected by the same verified `@getdetailengine.com` server-side
+identity boundary as the Command Centre, and the payment Edge Function checks
+that identity again. `start.getdetailengine.com` should be assigned to this
+Vercel project; its root renders the sales-start experience while
+`dashboard.getdetailengine.com` continues to render the Command Centre.
