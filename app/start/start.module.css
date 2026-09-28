@@ -37,9 +37,32 @@
   font-weight: 750;
 }
 
+.intro {
+  width: min(920px, calc(100% - 40px));
+  margin: 58px auto 0;
+  text-align: center;
+}
+
+.intro h1 {
+  max-width: 860px;
+  margin: 0 auto;
+  font-size: clamp(44px, 6vw, 72px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: .98;
+}
+
+.intro p {
+  max-width: 650px;
+  margin: 22px auto 0;
+  color: #625e56;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
 .card {
   width: min(720px, calc(100% - 28px));
-  margin: 42px auto 12px;
+  margin: 32px auto 12px;
   overflow: hidden;
   border: 1px solid #d6d0c4;
   border-radius: 16px;
@@ -427,6 +450,21 @@
 
   .brand span {
     display: none;
+  }
+
+  .intro {
+    width: calc(100% - 32px);
+    margin-top: 34px;
+  }
+
+  .intro h1 {
+    font-size: clamp(36px, 11vw, 48px);
+    line-height: 1.02;
+  }
+
+  .intro p {
+    margin-top: 16px;
+    font-size: 16px;
   }
 
   .card {
