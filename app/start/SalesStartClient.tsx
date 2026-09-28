@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
+import { type FormEvent, useMemo, useState } from "react";
 import styles from "./start.module.css";
 
 type CheckoutResult = {
@@ -100,7 +101,7 @@ export function SalesStartClient({
     <main className={styles.page}>
       <header className={styles.topbar}>
         <a href="/" className={styles.brand} aria-label="DetailEngine Command Centre">
-          <img src="/detailengine-mark.png" alt="" />
+          <Image src="/detailengine-mark.png" alt="" width={38} height={38} priority />
           <span>DETAILENGINE</span>
         </a>
         <div className={styles.staff}>
