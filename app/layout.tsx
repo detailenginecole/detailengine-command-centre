@@ -18,8 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = incoming.get("x-forwarded-host") || incoming.get("host") || "localhost:3000";
   const protocol = incoming.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "DetailEngine Command Centre";
-  const description = "DetailEngine's operating system for accounts, warm transfers, media buying, client ROI and daily action briefings.";
+  const salesStartHost = host.split(":")[0].toLowerCase() === "start.getdetailengine.com";
+  const title = salesStartHost
+    ? "Start a client | DetailEngine"
+    : "DetailEngine Command Centre";
+  const description = salesStartHost
+    ? "Create a secure DetailEngine setup checkout during a sales call."
+    : "DetailEngine's operating system for accounts, warm transfers, media buying, client ROI and daily action briefings.";
 
   return {
     metadataBase: new URL(origin),
