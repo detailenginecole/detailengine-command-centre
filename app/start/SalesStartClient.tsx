@@ -177,7 +177,7 @@ export function SalesStartClient({
     setForm(initialForm);
   }
 
-  const paymentView = Boolean(checkout && submitted);
+  const paymentView = checkout && submitted ? { checkout, submitted } : null;
 
   return (
     <main className={styles.page}>
@@ -214,7 +214,7 @@ export function SalesStartClient({
             <div className={styles.sectionHeading}>
               <div>
                 <h1>Payment</h1>
-                <p>{submitted.businessName} · {submitted.email}</p>
+                <p>{paymentView.submitted.businessName} · {paymentView.submitted.email}</p>
               </div>
               <button className={styles.textButton} type="button" onClick={editDetails}>
                 Edit details
@@ -226,7 +226,7 @@ export function SalesStartClient({
               <strong>$1,000 CAD</strong>
             </div>
 
-            {checkout.reused && (
+            {paymentView.checkout.reused && (
               <div className={styles.notice}>
                 The open payment session for this client was reused.
               </div>
