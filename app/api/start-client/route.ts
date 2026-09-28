@@ -37,6 +37,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Valid JSON is required" }, { status: 400 });
   }
 
+  const checkoutMode = clean(source.checkout_mode);
+  if (!["embedded", "hosted"].includes(checkoutMode)) {
+    return NextResponse.json(
+      { error: "Choose an on-screen payment or a secure payment link." },
+      { status: 400 },
+    );
+  }
+
   const payload = {
     business_name: clean(source.business_name),
     full_name: clean(source.full_name),
@@ -44,7 +52,7 @@ export async function POST(request: Request) {
     niche: clean(source.niche) || "Auto detailing",
     general_location: clean(source.general_location),
     timezone: clean(source.timezone) || "America/New_York",
-    checkout_mode: "embedded",
+    checkout_mode: checkoutMode,
   };
 
   if (
