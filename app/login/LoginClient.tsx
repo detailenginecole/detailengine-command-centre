@@ -9,8 +9,10 @@ export function LoginClient({ enabled, returnTo, error }: { enabled: boolean; re
   async function signIn() {
     setBusy(true);
     const supabase = createSupabaseBrowserClient();
+    const safeReturnTo =
+      returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
+    document.cookie = `de_auth_return_to=${encodeURIComponent(safeReturnTo)}; Path=/; Max-Age=600; SameSite=Lax; Secure`;
     const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("returnTo", returnTo.startsWith("/") ? returnTo : "/");
     const { error: authError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback.toString() } });
     if (authError) setBusy(false);
   }
