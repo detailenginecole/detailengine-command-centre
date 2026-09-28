@@ -262,6 +262,14 @@ export function SalesStartClient({
         <span className={styles.pageName}>New client setup</span>
       </header>
 
+      <section className={styles.intro}>
+        <h1>Let&apos;s get you started with DetailEngine.</h1>
+        <p>
+          First, we&apos;ll confirm your business details. Then you can securely pay
+          the $1,000 CAD setup fee.
+        </p>
+      </section>
+
       <section className={styles.card}>
         {complete ? (
           <div className={styles.complete}>
