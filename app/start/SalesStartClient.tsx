@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
 import styles from "./start.module.css";
 
@@ -100,10 +101,10 @@ export function SalesStartClient({
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
-        <a href="/" className={styles.brand} aria-label="DetailEngine Command Centre">
+        <Link href="/" className={styles.brand} aria-label="DetailEngine Command Centre">
           <Image src="/detailengine-mark.png" alt="" width={38} height={38} priority />
           <span>DETAILENGINE</span>
-        </a>
+        </Link>
         <div className={styles.staff}>
           <span>Signed in as</span>
           <strong>{staffEmail || staffName}</strong>
