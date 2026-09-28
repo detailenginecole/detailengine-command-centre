@@ -28,9 +28,11 @@ const initialForm: FormState = {
 export function SalesStartClient({
   staffName,
   staffEmail,
+  previewMode = false,
 }: {
   staffName: string;
   staffEmail: string;
+  previewMode?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
@@ -54,6 +56,12 @@ export function SalesStartClient({
     setBusy(true);
     setError("");
     setCheckout(null);
+
+    if (previewMode) {
+      setBusy(false);
+      setError("Visual preview only. No checkout was created.");
+      return;
+    }
 
     try {
       const response = await fetch("/api/start-client", {
