@@ -52,14 +52,6 @@
   line-height: .98;
 }
 
-.intro p {
-  max-width: 650px;
-  margin: 22px auto 0;
-  color: #625e56;
-  font-size: 17px;
-  line-height: 1.55;
-}
-
 .card {
   width: min(720px, calc(100% - 28px));
   margin: 32px auto 12px;
@@ -460,11 +452,6 @@
   .intro h1 {
     font-size: clamp(36px, 11vw, 48px);
     line-height: 1.02;
-  }
-
-  .intro p {
-    margin-top: 16px;
-    font-size: 16px;
   }
 
   .card {
