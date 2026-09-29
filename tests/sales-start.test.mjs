@@ -5,6 +5,7 @@ import test from "node:test";
 const api = await readFile(new URL("../app/api/start-client/route.ts", import.meta.url), "utf8");
 const client = await readFile(new URL("../app/start/SalesStartClient.tsx", import.meta.url), "utf8");
 const page = await readFile(new URL("../app/start/SalesStartPage.tsx", import.meta.url), "utf8");
+const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
 
 test("sales start route preserves the internal staff boundary", () => {
   assert.match(api, /getDetailEngineUser\(\)/);
@@ -47,4 +48,11 @@ test("sales UI contains no promotional sales copy", () => {
   assert.match(client, /Let&apos;s get you started with DetailEngine/);
   assert.match(client, /Client details/);
   assert.match(client, /Continue to payment/);
+});
+
+test("the start subdomain root routes to the authenticated sales tool", () => {
+  assert.match(nextConfig, /source: "\/"/);
+  assert.match(nextConfig, /type: "host"/);
+  assert.match(nextConfig, /value: "start\.getdetailengine\.com"/);
+  assert.match(nextConfig, /destination: "\/start"/);
 });
