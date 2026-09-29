@@ -56,7 +56,7 @@ test("sales UI exposes both on-screen and client-link pathways", () => {
 
 test("sales UI contains no promotional sales copy", () => {
   assert.doesNotMatch(client, /Turn the yes|SECURE HANDOFF|Welcome,/);
-  assert.match(client, /Let&apos;s get you started with DetailEngine/);
+  assert.match(client, /Start making your shop more money than ever with DetailEngine/);
   assert.match(client, /Client details/);
   assert.match(client, /Continue to payment/);
 });
