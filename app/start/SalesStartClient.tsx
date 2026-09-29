@@ -51,7 +51,7 @@ const previewCheckoutUrl =
 const defaultSetupFeeCad = 1000;
 
 function formatSetupFee(amountCad: number) {
-  return `${amountCad.toLocaleString("en-CA")} CAD`;
+  return `$${amountCad.toLocaleString("en-CA")}`;
 }
 
 export function SalesStartClient({
@@ -95,7 +95,7 @@ export function SalesStartClient({
   function saveSetupFee() {
     const next = Number(feeDraft);
     if (!Number.isInteger(next) || next < 1 || next > 100000) {
-      setError("Enter a whole-dollar setup fee between $1 and $100,000 CAD.");
+      setError("Enter a whole-dollar setup fee between $1 and $100,000.");
       return;
     }
     setSetupFeeCad(next);
@@ -602,7 +602,7 @@ function FeeEditor({
   return (
     <div className={styles.feeEditor}>
       <label>
-        <span>Setup fee (CAD)</span>
+        <span>Setup fee</span>
         <input
           type="number"
           min={1}

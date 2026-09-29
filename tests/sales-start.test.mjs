@@ -37,7 +37,9 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /setup_amount_minor: setupFeeCad \* 100/);
   assert.match(client, /aria-label="Settings"/);
   assert.match(client, /className=\{styles\.settingsPanel\}/);
-  assert.match(client, /Setup fee \(CAD\)/);
+  assert.ok(client.includes("<span>Setup fee</span>"));
+  assert.ok(client.includes('return `$${amountCad.toLocaleString("en-CA")}`;'));
+  assert.doesNotMatch(client, /CAD/);
   assert.doesNotMatch(client, />\s*Adjust\s*</);
   assert.match(client, /formatSetupFee\(setupFeeCad\)/);
   assert.doesNotMatch(client, /card_number|payment_method_data/);
