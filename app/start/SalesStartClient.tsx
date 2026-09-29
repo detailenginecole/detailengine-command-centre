@@ -331,7 +331,7 @@ export function SalesStartClient({
       </header>
 
       <section className={styles.intro}>
-        <h1>Let&apos;s get you started with DetailEngine.</h1>
+        <h1>Start making your shop more money than ever with DetailEngine</h1>
       </section>
 
       <section className={styles.card}>
