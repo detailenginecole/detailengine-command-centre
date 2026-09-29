@@ -38,6 +38,18 @@ export async function POST(request: Request) {
   }
 
   const checkoutMode = clean(source.checkout_mode);
+  const setupAmountMinor = Number(source.setup_amount_minor ?? 100000);
+  if (
+    !Number.isInteger(setupAmountMinor) ||
+    setupAmountMinor < 100 ||
+    setupAmountMinor > 10000000
+  ) {
+    return NextResponse.json(
+      { error: "Enter a setup fee between $1 and $100,000 CAD." },
+      { status: 400 },
+    );
+  }
+
   if (!["embedded", "hosted"].includes(checkoutMode)) {
     return NextResponse.json(
       { error: "Choose an on-screen payment or a secure payment link." },
@@ -53,6 +65,7 @@ export async function POST(request: Request) {
     general_location: clean(source.general_location),
     timezone: clean(source.timezone) || "America/New_York",
     checkout_mode: checkoutMode,
+    setup_amount_minor: setupAmountMinor,
   };
 
   if (
