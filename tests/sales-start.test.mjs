@@ -17,6 +17,9 @@ test("checkout creation allows only the two verified setup pathways", () => {
   assert.match(api, /client-setup-payment/);
   assert.match(api, /\["embedded", "hosted"\]\.includes\(checkoutMode\)/);
   assert.match(api, /checkout_mode: checkoutMode/);
+  assert.match(api, /setup_amount_minor: setupAmountMinor/);
+  assert.match(api, /Number\.isInteger\(setupAmountMinor\)/);
+  assert.match(api, /setupAmountMinor > 10000000/);
   assert.match(api, /Authorization: `Bearer \$\{session\.access_token\}`/);
   assert.match(api, /cache: "no-store"/);
   assert.doesNotMatch(api, /service[_-]?role/i);
@@ -30,7 +33,11 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /initEmbeddedCheckout/);
   assert.match(client, /checkout_client_secret/);
   assert.match(client, /Secure payment form provided by Stripe/);
-  assert.match(client, /\$1,000 CAD/);
+  assert.match(client, /defaultSetupFeeCad = 1000/);
+  assert.match(client, /setup_amount_minor: setupFeeCad \* 100/);
+  assert.match(client, /Adjust/);
+  assert.match(client, /Setup fee \(CAD\)/);
+  assert.match(client, /formatSetupFee\(setupFeeCad\)/);
   assert.doesNotMatch(client, /card_number|payment_method_data/);
 });
 
