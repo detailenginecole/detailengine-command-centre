@@ -121,6 +121,7 @@ export function SalesStartClient({
     setError("");
     setCopied(false);
     setShowHostedPreview(false);
+    setEditingFee(false);
 
     if (previewMode) {
       setCheckout(
@@ -288,7 +289,45 @@ export function SalesStartClient({
           <Image src="/detailengine-mark.png" alt="" width={34} height={34} priority />
           <span>DETAILENGINE</span>
         </div>
-        <span className={styles.pageName}>New client setup</span>
+        <div className={styles.topbarActions}>
+          <span className={styles.pageName}>New client setup</span>
+          <button
+            className={styles.settingsButton}
+            type="button"
+            aria-label="Settings"
+            aria-expanded={editingFee}
+            disabled={Boolean(checkout) || busy || complete}
+            onClick={() => {
+              if (editingFee) {
+                setEditingFee(false);
+                setError("");
+              } else {
+                openFeeEditor();
+              }
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8.75A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Z" />
+              <path d="M19.1 13.1a7.5 7.5 0 0 0 0-2.2l1.55-1.2-1.75-3.03-1.83.74a7.8 7.8 0 0 0-1.9-1.1L14.9 4.35h-3.5l-.27 1.96a7.8 7.8 0 0 0-1.9 1.1L7.4 6.67 5.65 9.7l1.55 1.2a7.5 7.5 0 0 0 0 2.2l-1.55 1.2 1.75 3.03 1.83-.74a7.8 7.8 0 0 0 1.9 1.1l.27 1.96h3.5l.27-1.96a7.8 7.8 0 0 0 1.9-1.1l1.83.74 1.75-3.03-1.55-1.2Z" />
+            </svg>
+            <span>Settings</span>
+          </button>
+        </div>
+        {editingFee && !checkout && !complete && (
+          <div className={styles.settingsPanel} role="dialog" aria-label="Setup settings">
+            <strong>Setup fee</strong>
+            <FeeEditor
+              value={feeDraft}
+              onChange={setFeeDraft}
+              onSave={saveSetupFee}
+              onCancel={() => {
+                setEditingFee(false);
+                setError("");
+              }}
+            />
+            {error && <div className={styles.error} role="alert">{error}</div>}
+          </div>
+        )}
       </header>
 
       <section className={styles.intro}>
@@ -439,18 +478,7 @@ export function SalesStartClient({
               </button>
             </div>
 
-            <OrderSummary amountCad={setupFeeCad} onAdjust={openFeeEditor} />
-            {editingFee && (
-              <FeeEditor
-                value={feeDraft}
-                onChange={setFeeDraft}
-                onSave={saveSetupFee}
-                onCancel={() => {
-                  setEditingFee(false);
-                  setError("");
-                }}
-              />
-            )}
+            <OrderSummary amountCad={setupFeeCad} />
 
             <div className={styles.choices}>
               <button
@@ -534,18 +562,7 @@ export function SalesStartClient({
                 />
               </label>
 
-              <OrderSummary amountCad={setupFeeCad} onAdjust={openFeeEditor} />
-              {editingFee && (
-                <FeeEditor
-                  value={feeDraft}
-                  onChange={setFeeDraft}
-                  onSave={saveSetupFee}
-                  onCancel={() => {
-                    setEditingFee(false);
-                    setError("");
-                  }}
-                />
-              )}
+              <OrderSummary amountCad={setupFeeCad} />
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -562,29 +579,11 @@ export function SalesStartClient({
   );
 }
 
-function OrderSummary({
-  amountCad,
-  onAdjust,
-}: {
-  amountCad: number;
-  onAdjust?: () => void;
-}) {
+function OrderSummary({ amountCad }: { amountCad: number }) {
   return (
     <div className={styles.order}>
       <span>Setup &amp; implementation</span>
-      <div className={styles.feeValue}>
-        <strong>{formatSetupFee(amountCad)}</strong>
-        {onAdjust && (
-          <button
-            className={styles.adjustFee}
-            type="button"
-            onClick={onAdjust}
-            title="Adjust setup fee"
-          >
-            Adjust
-          </button>
-        )}
-      </div>
+      <strong>{formatSetupFee(amountCad)}</strong>
     </div>
   );
 }
