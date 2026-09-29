@@ -7,6 +7,7 @@
 }
 
 .topbar {
+  position: relative;
   min-height: 64px;
   display: flex;
   align-items: center;
@@ -35,6 +36,66 @@
   color: #656158;
   font-size: 13px;
   font-weight: 750;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settingsButton {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid #e1dcd2;
+  border-radius: 7px;
+  color: #777168;
+  background: transparent;
+  font: 700 11px var(--font-geist-sans), sans-serif;
+  cursor: pointer;
+}
+
+.settingsButton svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.settingsButton:hover,
+.settingsButton:focus-visible,
+.settingsButton[aria-expanded="true"] {
+  border-color: #aaa398;
+  color: #3f3b35;
+  background: #faf8f3;
+}
+
+.settingsButton:disabled {
+  opacity: .38;
+  cursor: default;
+}
+
+.settingsPanel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: clamp(14px, 4vw, 48px);
+  width: min(330px, calc(100vw - 28px));
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid #d6d0c4;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(32, 29, 24, .14);
+}
+
+.settingsPanel > strong {
+  font-size: 13px;
 }
 
 .intro {
@@ -156,29 +217,6 @@
 .order strong {
   white-space: nowrap;
   font-size: 17px;
-}
-
-.feeValue {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.adjustFee {
-  padding: 0;
-  border: 0;
-  color: #969188;
-  background: transparent;
-  font: 650 10px var(--font-geist-sans), sans-serif;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-
-.adjustFee:hover,
-.adjustFee:focus-visible {
-  color: #4f4b44;
 }
 
 .feeEditor {
@@ -534,9 +572,18 @@
     gap: 5px;
   }
 
-  .feeValue {
-    width: 100%;
-    justify-content: space-between;
+  .settingsButton span {
+    display: none;
+  }
+
+  .settingsButton {
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .settingsPanel {
+    right: 10px;
   }
 
   .feeEditor {
