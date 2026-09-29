@@ -30,7 +30,7 @@ a staging domain to that branch in the Vercel project settings.
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` for local work. Add the same five variables
+Copy `.env.example` to `.env.local` for local work. Add the same six variables
 to Vercel for Production, Preview, and Development as appropriate.
 
 Never place the Supabase secret key or `service_role` key in a `NEXT_PUBLIC_`
@@ -94,3 +94,31 @@ Staging uses isolated command-centre-data-staging, command-centre-admin-staging 
 Identity tests exercise the real Edge handlers with synthetic provider responses: same UUID after renaming, unknown/conflicting/duplicate selections, client-scoped detail reads, UUID-only writes and wrong-account report responses. They perform no network writes.
 
 Read-only database calls in the data/wrapper functions retry a 502/503/504 response once after 250 ms, preserving the exact request and client UUID. Other failures and account mutations are not retried. This addresses intermittent upstream timeouts observed during production verification.
+
+
+## Sales-call client start
+
+The internal `/start` route is a plain staff-only client and payment form. It
+collects the business name, initial owner, owner email and Florida market, then
+calls the authenticated `client-setup-payment` Edge Function. The setup fee
+defaults to $1,000 CAD; a quiet staff control can change it to a whole-dollar
+CAD amount from $1 through $100,000 before Checkout is created. Staff can
+either open Checkout inside the page with Stripe.js or create a client-specific
+Stripe-hosted payment link to copy, email or open. In both paths, card data is
+entered inside Stripe's UI and never reaches DetailEngine's application servers.
+
+After a verified payment, the existing webhook reserves and uses the canonical
+`clients.id`, creates the onboarding records and provider placeholders, assigns
+the buyer as the initial Client Portal owner, and sends the setup invitation.
+Repeated submissions for the same business, email, amount and compatible
+display mode reuse an open checkout. Changing the fee or switching between
+embedded and hosted Checkout expires the incompatible open session before
+creating the replacement. The signed webhook compares the paid total to the
+server-side setup intent before it provisions the client. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
+be the live publishable key for the same Stripe account as the server secret.
+
+The route is protected by the same verified `@getdetailengine.com` server-side
+identity boundary as the Command Centre, and the payment Edge Function checks
+that identity again. `start.getdetailengine.com` should be assigned to this
+Vercel project; its root renders the sales-start experience while
+`dashboard.getdetailengine.com` continues to render the Command Centre.
