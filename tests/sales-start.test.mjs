@@ -35,8 +35,10 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /Secure payment form provided by Stripe/);
   assert.match(client, /defaultSetupFeeCad = 1000/);
   assert.match(client, /setup_amount_minor: setupFeeCad \* 100/);
-  assert.match(client, /Adjust/);
+  assert.match(client, /aria-label="Settings"/);
+  assert.match(client, /className=\{styles\.settingsPanel\}/);
   assert.match(client, /Setup fee \(CAD\)/);
+  assert.doesNotMatch(client, />\s*Adjust\s*</);
   assert.match(client, /formatSetupFee\(setupFeeCad\)/);
   assert.doesNotMatch(client, /card_number|payment_method_data/);
 });
