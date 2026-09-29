@@ -51,7 +51,7 @@ const previewCheckoutUrl =
 const defaultSetupFeeCad = 1000;
 
 function formatSetupFee(amountCad: number) {
-  return `${amountCad.toLocaleString("en-CA")}`;
+  return `$${amountCad.toLocaleString("en-CA")}`;
 }
 
 export function SalesStartClient({
