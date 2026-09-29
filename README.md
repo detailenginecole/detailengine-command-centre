@@ -100,18 +100,21 @@ Read-only database calls in the data/wrapper functions retry a 502/503/504 respo
 
 The internal `/start` route is a plain staff-only client and payment form. It
 collects the business name, initial owner, owner email and Florida market, then
-calls the authenticated `client-setup-payment` Edge Function. Staff can either
-open the live $1,000 CAD Checkout inside the page with Stripe.js or create a
-client-specific Stripe-hosted payment link to copy, email or open. In both
-paths, card data is entered inside Stripe's UI and never reaches DetailEngine's
-application servers.
+calls the authenticated `client-setup-payment` Edge Function. The setup fee
+defaults to $1,000 CAD; a quiet staff control can change it to a whole-dollar
+CAD amount from $1 through $100,000 before Checkout is created. Staff can
+either open Checkout inside the page with Stripe.js or create a client-specific
+Stripe-hosted payment link to copy, email or open. In both paths, card data is
+entered inside Stripe's UI and never reaches DetailEngine's application servers.
 
 After a verified payment, the existing webhook reserves and uses the canonical
 `clients.id`, creates the onboarding records and provider placeholders, assigns
 the buyer as the initial Client Portal owner, and sends the setup invitation.
-Repeated submissions for the same business, email and compatible display mode
-reuse an open checkout. Switching between embedded and hosted Checkout expires
-the incompatible open session before creating the replacement. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
+Repeated submissions for the same business, email, amount and compatible
+display mode reuse an open checkout. Changing the fee or switching between
+embedded and hosted Checkout expires the incompatible open session before
+creating the replacement. The signed webhook compares the paid total to the
+server-side setup intent before it provisions the client. The browser requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; this must
 be the live publishable key for the same Stripe account as the server secret.
 
 The route is protected by the same verified `@getdetailengine.com` server-side
