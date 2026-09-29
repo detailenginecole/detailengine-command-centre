@@ -48,6 +48,11 @@ const initialForm: FormState = {
 
 const previewCheckoutUrl =
   "https://checkout.stripe.com/c/pay/cs_live_detailengine_preview";
+const defaultSetupFeeCad = 1000;
+
+function formatSetupFee(amountCad: number) {
+  return `${amountCad.toLocaleString("en-CA")} CAD`;
+}
 
 export function SalesStartClient({
   staffName,
@@ -69,12 +74,32 @@ export function SalesStartClient({
   const [complete, setComplete] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showHostedPreview, setShowHostedPreview] = useState(false);
+  const [setupFeeCad, setSetupFeeCad] = useState(defaultSetupFeeCad);
+  const [feeDraft, setFeeDraft] = useState(String(defaultSetupFeeCad));
+  const [editingFee, setEditingFee] = useState(false);
   const [error, setError] = useState("");
   const checkoutHost = useRef<HTMLDivElement>(null);
   const checkoutInstance = useRef<EmbeddedCheckout | null>(null);
 
   function update(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+    setError("");
+  }
+
+  function openFeeEditor() {
+    setFeeDraft(String(setupFeeCad));
+    setEditingFee(true);
+    setError("");
+  }
+
+  function saveSetupFee() {
+    const next = Number(feeDraft);
+    if (!Number.isInteger(next) || next < 1 || next > 100000) {
+      setError("Enter a whole-dollar setup fee between $1 and $100,000 CAD.");
+      return;
+    }
+    setSetupFeeCad(next);
+    setEditingFee(false);
     setError("");
   }
 
@@ -125,6 +150,7 @@ export function SalesStartClient({
           general_location: submitted.location,
           timezone: "America/New_York",
           checkout_mode: mode,
+          setup_amount_minor: setupFeeCad * 100,
         }),
       });
       const payload = await response.json();
@@ -223,6 +249,9 @@ export function SalesStartClient({
   function startAnother() {
     editDetails();
     setForm(initialForm);
+    setSetupFeeCad(defaultSetupFeeCad);
+    setFeeDraft(String(defaultSetupFeeCad));
+    setEditingFee(false);
   }
 
   async function copyPaymentLink() {
@@ -241,7 +270,7 @@ export function SalesStartClient({
       ? `mailto:${encodeURIComponent(paymentView.submitted.email)}?subject=${encodeURIComponent(
           "DetailEngine setup payment",
         )}&body=${encodeURIComponent(
-          `Hi ${paymentView.submitted.fullName},\n\nUse this secure Stripe link to pay the $1,000 CAD DetailEngine setup fee:\n\n${paymentView.checkout.checkout_url}\n\nYour account setup will begin after payment is confirmed.`,
+          `Hi ${paymentView.submitted.fullName},\n\nUse this secure Stripe link to pay the ${formatSetupFee(setupFeeCad)} DetailEngine setup fee:\n\n${paymentView.checkout.checkout_url}\n\nYour account setup will begin after payment is confirmed.`,
         )}`
       : "";
 
@@ -292,7 +321,7 @@ export function SalesStartClient({
               </button>
             </div>
 
-            <OrderSummary />
+            <OrderSummary amountCad={setupFeeCad} />
 
             {paymentView.checkout.reused && (
               <div className={styles.notice}>
@@ -301,7 +330,10 @@ export function SalesStartClient({
             )}
 
             {previewMode ? (
-              <PaymentFormPreview note="Standard pathway — the client enters their card on this screen." />
+              <PaymentFormPreview
+                amountCad={setupFeeCad}
+                note="Standard pathway — the client enters their card on this screen."
+              />
             ) : (
               <>
                 {!stripePublishableKey && (
@@ -329,7 +361,7 @@ export function SalesStartClient({
               </button>
             </div>
 
-            <OrderSummary />
+            <OrderSummary amountCad={setupFeeCad} />
 
             {paymentView.checkout.reused && (
               <div className={styles.notice}>
@@ -379,10 +411,13 @@ export function SalesStartClient({
                 <div className={styles.hostedBody}>
                   <div className={styles.hostedSummary}>
                     <span>DetailEngine</span>
-                    <h2>$1,000 CAD</h2>
+                    <h2>{formatSetupFee(setupFeeCad)}</h2>
                     <p>Setup &amp; implementation</p>
                   </div>
-                  <PaymentFormPreview note="Visual preview only — no payment is created." />
+                  <PaymentFormPreview
+                    amountCad={setupFeeCad}
+                    note="Visual preview only — no payment is created."
+                  />
                 </div>
               </div>
             )}
@@ -397,12 +432,25 @@ export function SalesStartClient({
             <div className={styles.sectionHeading}>
               <div>
                 <h1>How will they pay?</h1>
-                <p>{submitted.businessName} · $1,000 CAD</p>
+                <p>{submitted.businessName} · {formatSetupFee(setupFeeCad)}</p>
               </div>
               <button className={styles.textButton} type="button" onClick={editDetails}>
                 Edit details
               </button>
             </div>
+
+            <OrderSummary amountCad={setupFeeCad} onAdjust={openFeeEditor} />
+            {editingFee && (
+              <FeeEditor
+                value={feeDraft}
+                onChange={setFeeDraft}
+                onSave={saveSetupFee}
+                onCancel={() => {
+                  setEditingFee(false);
+                  setError("");
+                }}
+              />
+            )}
 
             <div className={styles.choices}>
               <button
@@ -486,7 +534,18 @@ export function SalesStartClient({
                 />
               </label>
 
-              <OrderSummary />
+              <OrderSummary amountCad={setupFeeCad} onAdjust={openFeeEditor} />
+              {editingFee && (
+                <FeeEditor
+                  value={feeDraft}
+                  onChange={setFeeDraft}
+                  onSave={saveSetupFee}
+                  onCancel={() => {
+                    setEditingFee(false);
+                    setError("");
+                  }}
+                />
+              )}
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -503,16 +562,75 @@ export function SalesStartClient({
   );
 }
 
-function OrderSummary() {
+function OrderSummary({
+  amountCad,
+  onAdjust,
+}: {
+  amountCad: number;
+  onAdjust?: () => void;
+}) {
   return (
     <div className={styles.order}>
       <span>Setup &amp; implementation</span>
-      <strong>$1,000 CAD</strong>
+      <div className={styles.feeValue}>
+        <strong>{formatSetupFee(amountCad)}</strong>
+        {onAdjust && (
+          <button
+            className={styles.adjustFee}
+            type="button"
+            onClick={onAdjust}
+            title="Adjust setup fee"
+          >
+            Adjust
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-function PaymentFormPreview({ note }: { note: string }) {
+function FeeEditor({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className={styles.feeEditor}>
+      <label>
+        <span>Setup fee (CAD)</span>
+        <input
+          type="number"
+          min={1}
+          max={100000}
+          step={1}
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </label>
+      <button className={styles.textButton} type="button" onClick={onSave}>
+        Done
+      </button>
+      <button className={styles.textButton} type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function PaymentFormPreview({
+  amountCad,
+  note,
+}: {
+  amountCad: number;
+  note: string;
+}) {
   return (
     <div className={styles.previewPayment} aria-label="Stripe payment form preview">
       <span>Card information</span>
@@ -520,7 +638,7 @@ function PaymentFormPreview({ note }: { note: string }) {
       <div className={styles.previewRow}><span>MM / YY</span><span>CVC</span></div>
       <span>Cardholder name</span>
       <div>Full name on card</div>
-      <button type="button" disabled>Pay $1,000 CAD</button>
+      <button type="button" disabled>Pay {formatSetupFee(amountCad)}</button>
       <small>{note}</small>
     </div>
   );

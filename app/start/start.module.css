@@ -158,6 +158,61 @@
   font-size: 17px;
 }
 
+.feeValue {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.adjustFee {
+  padding: 0;
+  border: 0;
+  color: #969188;
+  background: transparent;
+  font: 650 10px var(--font-geist-sans), sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.adjustFee:hover,
+.adjustFee:focus-visible {
+  color: #4f4b44;
+}
+
+.feeEditor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid #ddd7cb;
+  border-radius: 9px;
+  background: #faf8f3;
+}
+
+.feeEditor label {
+  display: grid;
+  gap: 6px;
+}
+
+.feeEditor label > span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.feeEditor input {
+  min-height: 40px;
+  width: 100%;
+  padding: 0 11px;
+  border: 1px solid #cfc9bd;
+  border-radius: 7px;
+  background: #fff;
+  color: #171714;
+  font: 14px var(--font-geist-sans), sans-serif;
+}
+
 .primary,
 .secondary,
 .outlineButton {
@@ -477,6 +532,15 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;
+  }
+
+  .feeValue {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .feeEditor {
+    grid-template-columns: 1fr auto auto;
   }
 
   .checkoutHost {
