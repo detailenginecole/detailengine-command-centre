@@ -13,3 +13,10 @@ test("Google login keeps the intended internal destination without changing the 
   assert.match(callback, /safeReturnTo/);
   assert.match(callback, /NextResponse\.redirect\(new URL\(returnTo, url\.origin\)\)/);
 });
+
+
+test("login page uses direct staff sign-in copy", () => {
+  assert.match(login, /<h1>Sign in<\/h1>/);
+  assert.match(login, /Use your DetailEngine Google account to continue/);
+  assert.doesNotMatch(login, /Company intelligence, protected/);
+});
