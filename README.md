@@ -122,3 +122,20 @@ identity boundary as the Command Centre, and the payment Edge Function checks
 that identity again. `start.getdetailengine.com` should be assigned to this
 Vercel project; its root renders the sales-start experience while
 `dashboard.getdetailengine.com` continues to render the Command Centre.
+
+## Contract onboarding implementation — not activated
+
+The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
+
+The start API deliberately returns 503 unless DETAILENGINE_CONTRACT_CAPTURE_ENABLED=true. Do not enable this flag against the old payment function: it does not store contract terms. /start-preview supports no-charge review of the new fields.
+
+The shared Client Portal source contains the final Agreement step, signer-authorized link lookup, completion gate migration, immutable purchase/contract snapshots and private archive download support. The modified payment function seeds a preparing contract record after verified payment and uses the agreed retainer for the operating profile. Existing purchases without contract terms retain their legacy path.
+
+Blocked release dependencies:
+- Explicit approval for the production Supabase migration. Automatic approval review rejected its tables/triggers/RLS/storage/security-definer scope; no live schema changed.
+- Native GHL configuration in the independently verified DetailEngine INTERNAL location: template, actual custom field IDs, owner pre-signing method and signer identity.
+- Provider integration is NOT implemented: map saved terms to GHL contact/opportunity fields, generate the document, persist the verified recipient URL, verify exact document/revision/signers from trusted provider evidence, and retrieve/archive final PDF and audit evidence.
+- No fabricated signature or signing timestamps. No browser redirect can mark a contract completed. Do not activate or deploy the portal changes while the provider integration is missing.
+
+Do not promote this staging build to production until the backend, provider integration and full live isolation/signing/payment tests pass. No real payment or client document was created during this build.
+

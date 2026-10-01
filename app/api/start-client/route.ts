@@ -1,3 +1,4 @@
+import { parseContractTerms } from "../../lib/contract-terms";
 import { NextResponse } from "next/server";
 import { getDetailEngineUser } from "../../lib/auth";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     setupAmountMinor > 10000000
   ) {
     return NextResponse.json(
-      { error: "Enter a setup fee between $1 and $100,000 CAD." },
+      { error: "Enter a setup fee between $1 and $100,000 USD." },
       { status: 400 },
     );
   }
@@ -57,7 +58,12 @@ export async function POST(request: Request) {
     );
   }
 
+  let contractTerms;
+  try { contractTerms = parseContractTerms(source.contract_terms, setupAmountMinor); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid contract details." }, { status: 400 }); }
+
   const payload = {
+    contract_terms: contractTerms,
     business_name: clean(source.business_name),
     full_name: clean(source.full_name),
     email: clean(source.email).toLowerCase(),
@@ -85,6 +91,9 @@ export async function POST(request: Request) {
     );
   }
 
+  if (process.env.DETAILENGINE_CONTRACT_CAPTURE_ENABLED !== "true") {
+    return NextResponse.json({ error: "Contract setup is not ready for payments yet." }, { status: 503 });
+  }
   const response = await fetch(checkoutEndpoint, {
     method: "POST",
     cache: "no-store",
