@@ -99,8 +99,9 @@ Read-only database calls in the data/wrapper functions retry a 502/503/504 respo
 ## Sales-call client start
 
 The internal `/start` route is a plain staff-only client and payment form. It
-collects the business name, initial owner, owner email and Florida market, then
-calls the authenticated `client-setup-payment` Edge Function. The setup fee
+collects the business and authorized-signer details needed for payment and the
+service agreement, then calls the authenticated `client-setup-payment` Edge
+Function. The setup fee
 defaults to $1,000 CAD; a quiet staff control can change it to a whole-dollar
 CAD amount from $1 through $100,000 before Checkout is created. Staff can
 either open Checkout inside the page with Stripe.js or create a client-specific
@@ -125,7 +126,7 @@ Vercel project; its root renders the sales-start experience while
 
 ## Contract onboarding implementation — not activated
 
-The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
+The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. It does not ask separately for a primary market; the initial account location is derived from the client address. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
 
 The start API deliberately returns 503 unless DETAILENGINE_CONTRACT_CAPTURE_ENABLED=true. Do not enable this flag against the old payment function: it does not store contract terms. /start-preview supports no-charge review of the new fields.
 
@@ -139,3 +140,13 @@ Blocked release dependencies:
 
 Do not promote this staging build to production until the backend, provider integration and full live isolation/signing/payment tests pass. No real payment or client document was created during this build.
 
+
+## Native signing release — 2026-10-02 UTC
+
+Verified production: PR #15 merged the contract capture changes into production commit 39d668e88503551a0670eae9cfed0fd12306c80e. Vercel dpl_5S5GEp6zDEMGEo2eyiJyyXkaCJCM is READY on start.getdetailengine.com and dashboard.getdetailengine.com. Production and staging DETAILENGINE_CONTRACT_CAPTURE_ENABLED are true.
+
+The current staging Start form asks for the legal business name, entity type and formation jurisdiction first, followed by signer name/email and the two commercial inputs. Business address and telephone are collected later during onboarding where they are operationally required. The client enters their title at the final agreement-signing step, so staff do not duplicate it during payment setup. Formation jurisdiction seeds the initial account location until onboarding supplies the business address.
+
+This supersedes the historical not-activated/GHL dependencies above. Native Portal signing replaces GHL document generation. Supabase native signing migration is applied, client-contract v1 and client-setup-payment v11 are ACTIVE, and the portal Agreement UI is deployed. The final step autofills the immutable terms, includes Cole's privately stored authorized signature, obtains explicit client consent/signature and preserves the signed PDF/audit before finishing setup. Retainer collection stays manual.
+
+The approved non-binding live fixture used fake signatures only. Signing/completion, account isolation, replay, private download and matching Drive archive passed; all fixture records/files were removed. No real card or customer invitation was used. The Windows archive task runs every ten minutes while Cole's session and Google Drive are running; Supabase retains the durable original if Drive is offline. Cloud archiving is not configured. Full release details and verification limits: Master Drive / 00 — DetailEngine Platform / client-portal / docs / native-contract-release.md.

@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     payload.timezone.length > 80
   ) {
     return NextResponse.json(
-      { error: "Complete the business, client, email, and market fields." },
+      { error: "Complete the business, client, email, and address fields." },
       { status: 400 },
     );
   }

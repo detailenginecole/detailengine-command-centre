@@ -45,6 +45,17 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.doesNotMatch(client, /card_number|payment_method_data/);
 });
 
+test("sales UI omits redundant fields and collects formation details first", () => {
+  assert.doesNotMatch(client, /Primary market/);
+  assert.doesNotMatch(client, /location: string/);
+  assert.match(
+    client,
+    /general_location: submitted\.jurisdiction\.trim\(\)\.slice\(0, 160\)/,
+  );
+  for (const removed of ["Client business address", "Client telephone", "Authorized signer title"]) assert.doesNotMatch(client, new RegExp(removed));
+  assert.ok(client.indexOf("Business entity type") < client.indexOf("Client full name"));
+});
+
 test("sales UI exposes both on-screen and client-link pathways", () => {
   assert.match(client, /Enter card here/);
   assert.match(client, /Send secure payment link/);

@@ -19,12 +19,8 @@ type FormState = {
   businessName: string;
   fullName: string;
   email: string;
-  location: string;
   entityType: string;
   jurisdiction: string;
-  businessAddress: string;
-  signerTitle: string;
-  phone: string;
   opportunityGoal: string;
   dailyBudget: string;
 };
@@ -51,7 +47,7 @@ const initialForm: FormState = {
   businessName: "",
   fullName: "",
   email: "",
-  location: "", entityType: "", jurisdiction: "", businessAddress: "", signerTitle: "", phone: "", opportunityGoal: "", dailyBudget: "",
+  entityType: "", jurisdiction: "", opportunityGoal: "", dailyBudget: "",
 };
 
 const previewCheckoutUrl =
@@ -135,8 +131,7 @@ export function SalesStartClient({
     return parseContractTerms({
       version: 1, currency: "USD", legal_name: values.businessName,
       entity_type: values.entityType, jurisdiction: values.jurisdiction,
-      business_address: values.businessAddress, signer_name: values.fullName,
-      signer_title: values.signerTitle, signer_email: values.email, phone: values.phone,
+      signer_name: values.fullName, signer_email: values.email,
       setup_amount_minor: setupFeeCad * 100, retainer_amount_minor: retainer * 100,
       opportunity_goal: Number(values.opportunityGoal),
       daily_budget_minor: Math.round(Number(values.dailyBudget) * 100),
@@ -179,7 +174,7 @@ export function SalesStartClient({
           full_name: submitted.fullName,
           email: submitted.email,
           niche: "Auto detailing",
-          general_location: submitted.location,
+          general_location: submitted.jurisdiction.trim().slice(0, 160),
           timezone: "America/New_York",
           checkout_mode: mode,
           setup_amount_minor: setupFeeCad * 100,
@@ -562,49 +557,18 @@ export function SalesStartClient({
               </label>
 
               <div className={styles.row}>
-                <label>
-                  <span>Client full name</span>
-                  <input
-                    required
-                    maxLength={120}
-                    autoComplete="name"
-                    value={form.fullName}
-                    onChange={(event) => update("fullName", event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Client email</span>
-                  <input
-                    required
-                    maxLength={254}
-                    type="email"
-                    autoComplete="email"
-                    value={form.email}
-                    onChange={(event) => update("email", event.target.value)}
-                  />
-                </label>
-              </div>
-
-              <label>
-                <span>Primary market</span>
-                <input
-                  required
-                  maxLength={160}
-                  autoComplete="address-level2"
-                  placeholder="Tampa, Florida"
-                  value={form.location}
-                  onChange={(event) => update("location", event.target.value)}
-                />
-              </label>
-
-              <div className={styles.row}>
                 <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
                 <label><span>Formation state / jurisdiction</span><input required maxLength={120} value={form.jurisdiction} onChange={e => update("jurisdiction", e.target.value)} /></label>
               </div>
-              <label><span>Client business address</span><input required maxLength={500} autoComplete="street-address" value={form.businessAddress} onChange={e => update("businessAddress", e.target.value)} /></label>
               <div className={styles.row}>
-                <label><span>Authorized signer title</span><input required maxLength={120} value={form.signerTitle} onChange={e => update("signerTitle", e.target.value)} /></label>
-                <label><span>Client telephone</span><input required type="tel" maxLength={40} value={form.phone} onChange={e => update("phone", e.target.value)} /></label>
+                <label>
+                  <span>Client full name</span>
+                  <input required maxLength={120} autoComplete="name" value={form.fullName} onChange={(event) => update("fullName", event.target.value)} />
+                </label>
+                <label>
+                  <span>Client email</span>
+                  <input required maxLength={254} type="email" autoComplete="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
+                </label>
               </div>
               <div className={styles.row}>
                 <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
