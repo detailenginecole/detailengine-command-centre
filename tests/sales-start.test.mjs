@@ -45,6 +45,15 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.doesNotMatch(client, /card_number|payment_method_data/);
 });
 
+test("sales UI does not ask for a redundant primary market", () => {
+  assert.doesNotMatch(client, /Primary market/);
+  assert.doesNotMatch(client, /location: string/);
+  assert.match(
+    client,
+    /general_location: submitted\.businessAddress\.trim\(\)\.slice\(0, 160\)/,
+  );
+});
+
 test("sales UI exposes both on-screen and client-link pathways", () => {
   assert.match(client, /Enter card here/);
   assert.match(client, /Send secure payment link/);

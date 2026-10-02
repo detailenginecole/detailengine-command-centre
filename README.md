@@ -99,8 +99,9 @@ Read-only database calls in the data/wrapper functions retry a 502/503/504 respo
 ## Sales-call client start
 
 The internal `/start` route is a plain staff-only client and payment form. It
-collects the business name, initial owner, owner email and Florida market, then
-calls the authenticated `client-setup-payment` Edge Function. The setup fee
+collects the business and authorized-signer details needed for payment and the
+service agreement, then calls the authenticated `client-setup-payment` Edge
+Function. The setup fee
 defaults to $1,000 CAD; a quiet staff control can change it to a whole-dollar
 CAD amount from $1 through $100,000 before Checkout is created. Staff can
 either open Checkout inside the page with Stripe.js or create a client-specific
@@ -125,7 +126,7 @@ Vercel project; its root renders the sales-start experience while
 
 ## Contract onboarding implementation — not activated
 
-The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
+The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. It does not ask separately for a primary market; the initial account location is derived from the client address. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
 
 The start API deliberately returns 503 unless DETAILENGINE_CONTRACT_CAPTURE_ENABLED=true. Do not enable this flag against the old payment function: it does not store contract terms. /start-preview supports no-charge review of the new fields.
 

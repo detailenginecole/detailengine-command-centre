@@ -19,7 +19,6 @@ type FormState = {
   businessName: string;
   fullName: string;
   email: string;
-  location: string;
   entityType: string;
   jurisdiction: string;
   businessAddress: string;
@@ -51,7 +50,7 @@ const initialForm: FormState = {
   businessName: "",
   fullName: "",
   email: "",
-  location: "", entityType: "", jurisdiction: "", businessAddress: "", signerTitle: "", phone: "", opportunityGoal: "", dailyBudget: "",
+  entityType: "", jurisdiction: "", businessAddress: "", signerTitle: "", phone: "", opportunityGoal: "", dailyBudget: "",
 };
 
 const previewCheckoutUrl =
@@ -179,7 +178,7 @@ export function SalesStartClient({
           full_name: submitted.fullName,
           email: submitted.email,
           niche: "Auto detailing",
-          general_location: submitted.location,
+          general_location: submitted.businessAddress.trim().slice(0, 160),
           timezone: "America/New_York",
           checkout_mode: mode,
           setup_amount_minor: setupFeeCad * 100,
@@ -584,18 +583,6 @@ export function SalesStartClient({
                   />
                 </label>
               </div>
-
-              <label>
-                <span>Primary market</span>
-                <input
-                  required
-                  maxLength={160}
-                  autoComplete="address-level2"
-                  placeholder="Tampa, Florida"
-                  value={form.location}
-                  onChange={(event) => update("location", event.target.value)}
-                />
-              </label>
 
               <div className={styles.row}>
                 <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
