@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { parseContractTerms } from "../lib/contract-terms";
 import Script from "next/script";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import styles from "./start.module.css";
@@ -19,6 +20,13 @@ type FormState = {
   fullName: string;
   email: string;
   location: string;
+  entityType: string;
+  jurisdiction: string;
+  businessAddress: string;
+  signerTitle: string;
+  phone: string;
+  opportunityGoal: string;
+  dailyBudget: string;
 };
 
 type EmbeddedCheckout = {
@@ -43,7 +51,7 @@ const initialForm: FormState = {
   businessName: "",
   fullName: "",
   email: "",
-  location: "",
+  location: "", entityType: "", jurisdiction: "", businessAddress: "", signerTitle: "", phone: "", opportunityGoal: "", dailyBudget: "",
 };
 
 const previewCheckoutUrl =
@@ -77,6 +85,8 @@ export function SalesStartClient({
   const [setupFeeCad, setSetupFeeCad] = useState(defaultSetupFeeCad);
   const [feeDraft, setFeeDraft] = useState(String(defaultSetupFeeCad));
   const [editingFee, setEditingFee] = useState(false);
+  const [retainer, setRetainer] = useState(2500);
+  const [retainerDraft, setRetainerDraft] = useState("2500");
   const [error, setError] = useState("");
   const checkoutHost = useRef<HTMLDivElement>(null);
   const checkoutInstance = useRef<EmbeddedCheckout | null>(null);
@@ -88,6 +98,7 @@ export function SalesStartClient({
 
   function openFeeEditor() {
     setFeeDraft(String(setupFeeCad));
+    setRetainerDraft(String(retainer));
     setEditingFee(true);
     setError("");
   }
@@ -98,6 +109,11 @@ export function SalesStartClient({
       setError("Enter a whole-dollar setup fee between $1 and $100,000.");
       return;
     }
+    const nextRetainer = Number(retainerDraft);
+    if (!Number.isInteger(nextRetainer) || nextRetainer < 1 || nextRetainer > 100000) {
+      setError("Enter a whole-dollar retainer between $1 and $100,000 USD."); return;
+    }
+    setRetainer(nextRetainer);
     setSetupFeeCad(next);
     setEditingFee(false);
     setError("");
@@ -105,11 +121,26 @@ export function SalesStartClient({
 
   function continueToPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    try { contractTerms(form); } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Check the contract details."); return;
+    }
     setSubmitted({ ...form });
     setPaymentMode(null);
     setCheckout(null);
     setComplete(false);
     setError("");
+  }
+
+  function contractTerms(values: FormState) {
+    return parseContractTerms({
+      version: 1, currency: "USD", legal_name: values.businessName,
+      entity_type: values.entityType, jurisdiction: values.jurisdiction,
+      business_address: values.businessAddress, signer_name: values.fullName,
+      signer_title: values.signerTitle, signer_email: values.email, phone: values.phone,
+      setup_amount_minor: setupFeeCad * 100, retainer_amount_minor: retainer * 100,
+      opportunity_goal: Number(values.opportunityGoal),
+      daily_budget_minor: Math.round(Number(values.dailyBudget) * 100),
+    }, setupFeeCad * 100);
   }
 
   async function choosePayment(mode: PaymentMode) {
@@ -152,6 +183,7 @@ export function SalesStartClient({
           timezone: "America/New_York",
           checkout_mode: mode,
           setup_amount_minor: setupFeeCad * 100,
+          contract_terms: contractTerms(submitted),
         }),
       });
       const payload = await response.json();
@@ -250,6 +282,8 @@ export function SalesStartClient({
   function startAnother() {
     editDetails();
     setForm(initialForm);
+    setRetainer(2500);
+    setRetainerDraft("2500");
     setSetupFeeCad(defaultSetupFeeCad);
     setFeeDraft(String(defaultSetupFeeCad));
     setEditingFee(false);
@@ -315,7 +349,8 @@ export function SalesStartClient({
         </div>
         {editingFee && !checkout && !complete && (
           <div className={styles.settingsPanel} role="dialog" aria-label="Setup settings">
-            <strong>Setup fee</strong>
+            <strong>Fees in USD</strong>
+            <label><span>Retainer per cycle (USD)</span><input type="number" min={1} max={100000} step={1} value={retainerDraft} onChange={event => setRetainerDraft(event.target.value)} /></label>
             <FeeEditor
               value={feeDraft}
               onChange={setFeeDraft}
@@ -515,7 +550,7 @@ export function SalesStartClient({
 
             <form onSubmit={continueToPayment} className={styles.form}>
               <label>
-                <span>Business name</span>
+                <span>Legal business name</span>
                 <input
                   autoFocus
                   required
@@ -562,6 +597,21 @@ export function SalesStartClient({
                 />
               </label>
 
+              <div className={styles.row}>
+                <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
+                <label><span>Formation state / jurisdiction</span><input required maxLength={120} value={form.jurisdiction} onChange={e => update("jurisdiction", e.target.value)} /></label>
+              </div>
+              <label><span>Client business address</span><input required maxLength={500} autoComplete="street-address" value={form.businessAddress} onChange={e => update("businessAddress", e.target.value)} /></label>
+              <div className={styles.row}>
+                <label><span>Authorized signer title</span><input required maxLength={120} value={form.signerTitle} onChange={e => update("signerTitle", e.target.value)} /></label>
+                <label><span>Client telephone</span><input required type="tel" maxLength={40} value={form.phone} onChange={e => update("phone", e.target.value)} /></label>
+              </div>
+              <div className={styles.row}>
+                <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
+                <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
+              </div>
+              <div className={styles.order}><span>Retainer per completed cycle</span><strong>{formatSetupFee(retainer)} USD</strong></div>
+              <p>The retainer is not charged with setup. The client signs the agreement at the end of onboarding.</p>
               <OrderSummary amountCad={setupFeeCad} />
 
               {error && <div className={styles.error} role="alert">{error}</div>}
