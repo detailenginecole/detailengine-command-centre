@@ -1,7 +1,6 @@
 export type ContractTerms = {
   version: 1; currency: "USD"; legal_name: string; entity_type: string;
-  jurisdiction: string; business_address: string; signer_name: string;
-  signer_title: string; signer_email: string; phone: string;
+  jurisdiction: string; signer_name: string; signer_email: string;
   setup_amount_minor: number; retainer_amount_minor: number;
   opportunity_goal: number; daily_budget_minor: number;
   minimum_cycle_days: 28; ad_spend_fee_percent: 10;
@@ -24,18 +23,13 @@ export function parseContractTerms(value: unknown, setupAmount: number): Contrac
     throw new Error("Contract version, currency or setup fee does not match.");
   const email = text(s.signer_email, "signer email", 254).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid signer email.");
-  const phone = text(s.phone, "phone number", 40);
-  if (!/^\+?[0-9 ()-]{7,40}$/.test(phone) || phone.replace(/\D/g, "").length < 7)
-    throw new Error("Enter a valid phone number.");
   return {
     version: 1, currency: "USD",
     legal_name: text(s.legal_name, "legal business name", 160),
     entity_type: text(s.entity_type, "business entity type", 80),
     jurisdiction: text(s.jurisdiction, "formation state", 120),
-    business_address: text(s.business_address, "business address", 500),
     signer_name: text(s.signer_name, "signer name", 120),
-    signer_title: text(s.signer_title, "signer title", 120),
-    signer_email: email, phone,
+    signer_email: email,
     setup_amount_minor: integer(setupAmount, "setup fee", 10000000),
     retainer_amount_minor: integer(s.retainer_amount_minor, "retainer", 10000000),
     opportunity_goal: integer(s.opportunity_goal, "whole-number opportunity goal", 1000000),
