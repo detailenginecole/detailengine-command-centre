@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import styles from "./start.module.css";
 
 type PaymentMode = "embedded" | "hosted";
+type EditableAmount = "setup" | "retainer";
 
 type CheckoutResult = {
   checkout_client_secret?: string;
@@ -80,7 +81,7 @@ export function SalesStartClient({
   const [showHostedPreview, setShowHostedPreview] = useState(false);
   const [setupFeeCad, setSetupFeeCad] = useState(defaultSetupFeeCad);
   const [feeDraft, setFeeDraft] = useState(String(defaultSetupFeeCad));
-  const [editingFee, setEditingFee] = useState(false);
+  const [editingAmount, setEditingAmount] = useState<EditableAmount | null>(null);
   const [retainer, setRetainer] = useState(2500);
   const [retainerDraft, setRetainerDraft] = useState("2500");
   const [error, setError] = useState("");
@@ -92,26 +93,30 @@ export function SalesStartClient({
     setError("");
   }
 
-  function openFeeEditor() {
-    setFeeDraft(String(setupFeeCad));
-    setRetainerDraft(String(retainer));
-    setEditingFee(true);
+  function openAmountEditor(amount: EditableAmount) {
+    if (amount === "setup") setFeeDraft(String(setupFeeCad));
+    else setRetainerDraft(String(retainer));
+    setEditingAmount(amount);
     setError("");
   }
 
-  function saveSetupFee() {
-    const next = Number(feeDraft);
+  function saveAmount() {
+    const isSetup = editingAmount === "setup";
+    const next = Number(isSetup ? feeDraft : retainerDraft);
     if (!Number.isInteger(next) || next < 1 || next > 100000) {
-      setError("Enter a whole-dollar setup fee between $1 and $100,000.");
+      setError(
+        `Enter a whole-dollar ${isSetup ? "setup fee" : "retainer"} between $1 and $100,000 USD.`,
+      );
       return;
     }
-    const nextRetainer = Number(retainerDraft);
-    if (!Number.isInteger(nextRetainer) || nextRetainer < 1 || nextRetainer > 100000) {
-      setError("Enter a whole-dollar retainer between $1 and $100,000 USD."); return;
-    }
-    setRetainer(nextRetainer);
-    setSetupFeeCad(next);
-    setEditingFee(false);
+    if (isSetup) setSetupFeeCad(next);
+    else setRetainer(next);
+    setEditingAmount(null);
+    setError("");
+  }
+
+  function closeAmountEditor() {
+    setEditingAmount(null);
     setError("");
   }
 
@@ -147,7 +152,7 @@ export function SalesStartClient({
     setError("");
     setCopied(false);
     setShowHostedPreview(false);
-    setEditingFee(false);
+    setEditingAmount(null);
 
     if (previewMode) {
       setCheckout(
@@ -258,6 +263,15 @@ export function SalesStartClient({
     stripeReady,
   ]);
 
+  useEffect(() => {
+    if (!editingAmount) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") closeAmountEditor();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [editingAmount]);
+
   function changeMethod() {
     checkoutInstance.current?.destroy();
     checkoutInstance.current = null;
@@ -281,7 +295,7 @@ export function SalesStartClient({
     setRetainerDraft("2500");
     setSetupFeeCad(defaultSetupFeeCad);
     setFeeDraft(String(defaultSetupFeeCad));
-    setEditingFee(false);
+    setEditingAmount(null);
   }
 
   async function copyPaymentLink() {
@@ -318,47 +332,38 @@ export function SalesStartClient({
           <Image src="/detailengine-mark.png" alt="" width={34} height={34} priority />
           <span>DETAILENGINE</span>
         </div>
-        <div className={styles.topbarActions}>
-          <span className={styles.pageName}>New client setup</span>
-          <button
-            className={styles.settingsButton}
-            type="button"
-            aria-label="Settings"
-            aria-expanded={editingFee}
-            disabled={Boolean(checkout) || busy || complete}
-            onClick={() => {
-              if (editingFee) {
-                setEditingFee(false);
-                setError("");
-              } else {
-                openFeeEditor();
-              }
-            }}
+        <span className={styles.pageName}>New client setup</span>
+      </header>
+
+      {editingAmount && !checkout && !complete && (
+        <div className={styles.modalBackdrop} onMouseDown={closeAmountEditor}>
+          <div
+            className={styles.amountModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="amount-editor-title"
+            onMouseDown={(event) => event.stopPropagation()}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 8.75A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Z" />
-              <path d="M19.1 13.1a7.5 7.5 0 0 0 0-2.2l1.55-1.2-1.75-3.03-1.83.74a7.8 7.8 0 0 0-1.9-1.1L14.9 4.35h-3.5l-.27 1.96a7.8 7.8 0 0 0-1.9 1.1L7.4 6.67 5.65 9.7l1.55 1.2a7.5 7.5 0 0 0 0 2.2l-1.55 1.2 1.75 3.03 1.83-.74a7.8 7.8 0 0 0 1.9 1.1l.27 1.96h3.5l.27-1.96a7.8 7.8 0 0 0 1.9-1.1l1.83.74 1.75-3.03-1.55-1.2Z" />
-            </svg>
-            <span>Settings</span>
-          </button>
-        </div>
-        {editingFee && !checkout && !complete && (
-          <div className={styles.settingsPanel} role="dialog" aria-label="Setup settings">
-            <strong>Fees in USD</strong>
-            <label><span>Retainer per cycle (USD)</span><input type="number" min={1} max={100000} step={1} value={retainerDraft} onChange={event => setRetainerDraft(event.target.value)} /></label>
-            <FeeEditor
-              value={feeDraft}
-              onChange={setFeeDraft}
-              onSave={saveSetupFee}
-              onCancel={() => {
-                setEditingFee(false);
-                setError("");
-              }}
+            <div className={styles.modalHeading}>
+              <div>
+                <span className={styles.stepLabel}>AMOUNT IN USD</span>
+                <h2 id="amount-editor-title">
+                  Edit {editingAmount === "setup" ? "setup fee" : "retainer"}
+                </h2>
+              </div>
+              <button className={styles.modalClose} type="button" onClick={closeAmountEditor} aria-label="Close amount editor">×</button>
+            </div>
+            <AmountEditor
+              label={editingAmount === "setup" ? "Setup & implementation" : "Retainer per completed cycle"}
+              value={editingAmount === "setup" ? feeDraft : retainerDraft}
+              onChange={editingAmount === "setup" ? setFeeDraft : setRetainerDraft}
+              onSave={saveAmount}
+              onCancel={closeAmountEditor}
             />
             {error && <div className={styles.error} role="alert">{error}</div>}
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       <section className={styles.intro}>
         <h1>Start making your shop more money than ever with DetailEngine</h1>
@@ -574,9 +579,11 @@ export function SalesStartClient({
                 <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
                 <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
               </div>
-              <div className={styles.order}><span>Retainer per completed cycle</span><strong>{formatSetupFee(retainer)} USD</strong></div>
+              <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit retainer per completed cycle">
+                <span>Retainer per completed cycle</span><strong>{formatSetupFee(retainer)} USD</strong>
+              </button>
               <p>The retainer is not charged with setup. The client signs the agreement at the end of onboarding.</p>
-              <OrderSummary amountCad={setupFeeCad} />
+              <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -593,7 +600,15 @@ export function SalesStartClient({
   );
 }
 
-function OrderSummary({ amountCad }: { amountCad: number }) {
+function OrderSummary({ amountCad, onEdit }: { amountCad: number; onEdit?: () => void }) {
+  if (onEdit) {
+    return (
+      <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup and implementation fee">
+        <span>Setup &amp; implementation</span>
+        <strong>{formatSetupFee(amountCad)}</strong>
+      </button>
+    );
+  }
   return (
     <div className={styles.order}>
       <span>Setup &amp; implementation</span>
@@ -602,22 +617,25 @@ function OrderSummary({ amountCad }: { amountCad: number }) {
   );
 }
 
-function FeeEditor({
+function AmountEditor({
+  label,
   value,
   onChange,
   onSave,
   onCancel,
 }: {
+  label: string;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }) {
   return (
-    <div className={styles.feeEditor}>
+    <form className={styles.feeEditor} onSubmit={(event) => { event.preventDefault(); onSave(); }}>
       <label>
-        <span>Setup fee</span>
+        <span>{label}</span>
         <input
+          autoFocus
           type="number"
           min={1}
           max={100000}
@@ -627,13 +645,13 @@ function FeeEditor({
           onChange={(event) => onChange(event.target.value)}
         />
       </label>
-      <button className={styles.textButton} type="button" onClick={onSave}>
-        Done
+      <button className={styles.primary} type="submit">
+        Save
       </button>
       <button className={styles.textButton} type="button" onClick={onCancel}>
         Cancel
       </button>
-    </div>
+    </form>
   );
 }
 
