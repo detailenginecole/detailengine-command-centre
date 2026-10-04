@@ -35,9 +35,14 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /Secure payment form provided by Stripe/);
   assert.match(client, /defaultSetupFeeCad = 1000/);
   assert.match(client, /setup_amount_minor: setupFeeCad \* 100/);
-  assert.match(client, /aria-label="Settings"/);
-  assert.match(client, /className=\{styles\.settingsPanel\}/);
-  assert.ok(client.includes("<span>Setup fee</span>"));
+  assert.doesNotMatch(client, /aria-label="Settings"/);
+  assert.doesNotMatch(client, /styles\.settingsPanel/);
+  assert.match(client, /aria-label="Edit retainer per completed cycle"/);
+  assert.match(client, /aria-label="Edit setup and implementation fee"/);
+  assert.match(client, /aria-modal="true"/);
+  assert.match(client, /editingAmount === "setup"/);
+  assert.match(client, /if \(isSetup\) setSetupFeeCad\(next\)/);
+  assert.match(client, /else setRetainer\(next\)/);
   assert.ok(client.includes('return `$${amountCad.toLocaleString("en-CA")}`;'));
   assert.doesNotMatch(client, /CAD/);
   assert.doesNotMatch(client, />\s*Adjust\s*</);

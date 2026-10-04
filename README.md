@@ -102,8 +102,9 @@ The internal `/start` route is a plain staff-only client and payment form. It
 collects the business and authorized-signer details needed for payment and the
 service agreement, then calls the authenticated `client-setup-payment` Edge
 Function. The setup fee
-defaults to $1,000 CAD; a quiet staff control can change it to a whole-dollar
-CAD amount from $1 through $100,000 before Checkout is created. Staff can
+defaults to $1,000 USD. The retainer defaults to $2,500 USD. Clicking either
+amount card opens a focused editor for that amount; each accepts whole-dollar
+values from $1 through $100,000 before Checkout is created. Staff can
 either open Checkout inside the page with Stripe.js or create a client-specific
 Stripe-hosted payment link to copy, email or open. In both paths, card data is
 entered inside Stripe's UI and never reaches DetailEngine's application servers.
@@ -124,21 +125,16 @@ that identity again. `start.getdetailengine.com` should be assigned to this
 Vercel project; its root renders the sales-start experience while
 `dashboard.getdetailengine.com` continues to render the Command Centre.
 
-## Contract onboarding implementation — not activated
+## Contract onboarding
 
-The start form captures legal entity, jurisdiction, client address, signer name/title/email/phone, setup fee, USD retainer (default 2,500), blank required opportunity goal and daily ad budget. It does not ask separately for a primary market; the initial account location is derived from the client address. Fees use the existing Settings control. The server validates the full snapshot before requesting Stripe Checkout.
+The start form captures the client legal business name, entity type and jurisdiction, signer name and email, USD setup fee, USD retainer, blank required transfer-opportunity goal and daily advertising budget. It does not collect the signer title, address or telephone during the sales call. The signer supplies their title at the final Agreement step. The setup and retainer cards each open their own editor; there is no global Settings control. The server validates the full purchase snapshot before requesting Stripe Checkout.
 
-The start API deliberately returns 503 unless DETAILENGINE_CONTRACT_CAPTURE_ENABLED=true. Do not enable this flag against the old payment function: it does not store contract terms. /start-preview supports no-charge review of the new fields.
+The start API returns 503 unless `DETAILENGINE_CONTRACT_CAPTURE_ENABLED=true`, preventing a deployment that cannot preserve the agreed terms from accepting payment. `/start-preview` supports no-charge review of the fields and interaction.
 
 The shared Client Portal source contains the final Agreement step, signer-authorized link lookup, completion gate migration, immutable purchase/contract snapshots and private archive download support. The modified payment function seeds a preparing contract record after verified payment and uses the agreed retainer for the operating profile. Existing purchases without contract terms retain their legacy path.
 
-Blocked release dependencies:
-- Explicit approval for the production Supabase migration. Automatic approval review rejected its tables/triggers/RLS/storage/security-definer scope; no live schema changed.
-- Native GHL configuration in the independently verified DetailEngine INTERNAL location: template, actual custom field IDs, owner pre-signing method and signer identity.
-- Provider integration is NOT implemented: map saved terms to GHL contact/opportunity fields, generate the document, persist the verified recipient URL, verify exact document/revision/signers from trusted provider evidence, and retrieve/archive final PDF and audit evidence.
-- No fabricated signature or signing timestamps. No browser redirect can mark a contract completed. Do not activate or deploy the portal changes while the provider integration is missing.
 
-Do not promote this staging build to production until the backend, provider integration and full live isolation/signing/payment tests pass. No real payment or client document was created during this build.
+Promote Start workflow changes only after focused interaction checks, the full repository validation, a READY staging deployment and explicit production approval. Production payment and signing verification evidence belongs in the Master Drive `PROGRESS_LOG.md`.
 
 
 ## Native signing release — 2026-10-02 UTC
