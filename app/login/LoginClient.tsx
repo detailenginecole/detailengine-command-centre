@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { createSupabaseBrowserClient } from "../lib/supabase/client";
 
 export function LoginClient({ enabled, returnTo, error }: { enabled: boolean; returnTo: string; error?: string }) {
@@ -16,5 +17,5 @@ export function LoginClient({ enabled, returnTo, error }: { enabled: boolean; re
     const { error: authError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback.toString() } });
     if (authError) setBusy(false);
   }
-  return <main className="login-screen"><section><div className="login-brand">DetailEngine</div><h1>Sign in</h1><p>Use your DetailEngine Google account to continue.</p>{error === "not_allowed" && <div className="login-error">This Google account is not approved.</div>}{enabled ? <button className="google-button" onClick={signIn} disabled={busy}><b>G</b>{busy ? "Opening Google…" : "Continue with Google"}</button> : <><div className="preview-notice">Google authentication is prepared but intentionally disabled in preview.</div><Link className="primary-button" href="/">Open preview</Link></>}</section></main>;
+  return <main className="login-screen"><section><div className="login-brand"><Image src="/brand/detailengine-stacked-slogan-graphite.svg" alt="DetailEngine" width={330} height={149} priority /></div><h1>Sign in</h1><p>Use your DetailEngine Google account to continue.</p>{error === "not_allowed" && <div className="login-error">This Google account is not approved.</div>}{enabled ? <button className="google-button" onClick={signIn} disabled={busy}><b>G</b>{busy ? "Opening Google…" : "Continue with Google"}</button> : <><div className="preview-notice">Google authentication is prepared but intentionally disabled in preview.</div><Link className="primary-button" href="/">Open preview</Link></>}</section></main>;
 }

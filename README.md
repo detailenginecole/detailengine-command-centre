@@ -152,3 +152,8 @@ The production Start form now asks for the legal business name, entity type and 
 This supersedes the historical not-activated/GHL dependencies above. Native Portal signing replaces GHL document generation. Supabase native signing migration is applied, client-contract v1 and client-setup-payment v11 are ACTIVE, and the portal Agreement UI is deployed. The final step autofills the immutable terms, includes Cole's privately stored authorized signature, obtains explicit client consent/signature and preserves the signed PDF/audit before finishing setup. Retainer collection stays manual.
 
 The approved non-binding live fixture used fake signatures only. Signing/completion, account isolation, replay, private download and matching Drive archive passed; all fixture records/files were removed. No real card or customer invitation was used. The Windows archive task runs every ten minutes while Cole's session and Google Drive are running; Supabase retains the durable original if Drive is offline. Cloud archiving is not configured. Full release details and verification limits: Master Drive / 00 — DetailEngine Platform / client-portal / docs / native-contract-release.md.
+
+
+## v1 brand rollout — 2026-10-04
+
+The shared Drive DetailEngine — v1 Brand Kit is the visual source of truth. Layouts self-host Barlow through next/font/local; public/brand contains outlined logo assets, and app/brand-v1.css establishes the shared red/graphite/silver theme, 6px controls and 12px cards. Existing data/auth/payment behavior is preserved. Release verification and email publication status are recorded in the shared PROGRESS_LOG.md.

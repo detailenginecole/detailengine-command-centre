@@ -1,0 +1,32 @@
+/* DetailEngine v1. Canonical values: shared Drive v1 Brand Kit. */
+:root{--font-sans:var(--font-barlow);--font-serif:var(--font-barlow);--font-geist-sans:var(--font-barlow);--font-geist-mono:var(--font-barlow);--sans:var(--font-barlow),Arial,sans-serif;--mono:var(--font-barlow),Arial,sans-serif;--ink:#191C21;--muted:#5B626D;--paper:#F7F8FA;--card:#FFFFFF;--panel:#FFFFFF;--line:#CAD0D7;--sidebar:#191C21;--orange:#D62329;--orange-soft:#FCE3E5;--orange-pale:#FCE3E5;--shadow:0 8px 24px rgba(25,28,33,.06);--brand:#EC2E2F;--action:#D62329;--action-hover:#B51D22;--radius-control:6px;--radius-card:12px}
+body{background:#F7F8FA;background-image:none;font-family:var(--font-barlow),Arial,sans-serif}
+h1,h2,h3,h4{font-family:var(--font-barlow),Arial,sans-serif;letter-spacing:-.025em}
+button,input,select,textarea{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #416FA2;outline-offset:3px}
+input::placeholder,textarea::placeholder{color:#5B626D;opacity:1}
+.primary-button,.full-button,.media-button-primary{background:#D62329;color:#fff;border-color:#D62329;box-shadow:none;border-radius:6px;font-weight:600}
+.primary-button:hover,.full-button:hover,.media-button-primary:hover{background:#B51D22;border-color:#B51D22;color:#fff}
+.panel,.metric-card,.auth-card,.setup-card,.media-panel,.report-panel{border-color:#CAD0D7;border-width:1px;border-radius:12px;box-shadow:0 4px 20px rgba(25,28,33,.04)}
+.status-pill,.return-pill{border-radius:4px}
+.topbar,.setup-topbar{background:#191C21;border-color:#EC2E2F;color:#fff}
+.topbar .brand img,.setup-topbar img{width:220px;height:auto;max-height:44px;object-fit:contain}
+.brand span{color:#B7C3D0;border-color:#46515F}
+.auth-page,.login-screen{background:#191C21}
+.auth-card,.login-screen>section{background:#fff;border:1px solid #CAD0D7;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.auth-card>img{width:min(360px,100%);height:auto;margin:auto;display:block}
+.auth-card h1,.empty-portal h1,.error-page h1,.section-heading h2{font-family:var(--font-barlow),Arial,sans-serif;font-weight:600}
+.roi-hero,.roi-hero.negative{background:#191C21;border-radius:12px}
+.roi-primary>.investment-formula{color:#B7C3D0}
+.setup-progress>span,.setup-wizard-progress .setup-progress>span{background:#D62329}
+.setup-steps [aria-current] .setup-step-button>span{background:#D62329;border-color:#D62329;color:#fff}
+.sidebar nav a,.sidebar nav button.notification-button{border-radius:6px;color:#B7C3D0}
+.sidebar nav a.active{background:#242A32;border-color:#46515F;color:#fff}
+.sidebar nav a b,.sidebar nav button.notification-button b{border-radius:6px;background:#242A32;color:#B7C3D0}
+.sidebar nav a.active b{background:#D62329;color:#fff}
+.metric-card::after{display:none}
+.page-header h1{line-height:1.08;letter-spacing:-.035em}
+.login-brand img{width:100%;height:auto;max-width:310px}
+.range-control,.report-buttons button,.outline-button{box-shadow:none;border-color:#CAD0D7;border-width:1px}
+@media(max-width:600px){.topbar .brand img,.setup-topbar img{width:170px}.auth-page{padding:20px}.auth-card{padding:28px}.section-heading h2{font-size:28px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

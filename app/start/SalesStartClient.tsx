@@ -337,8 +337,7 @@ export function SalesStartClient({
 
       <header className={styles.topbar}>
         <div className={styles.brand}>
-          <Image src="/detailengine-mark.png" alt="" width={34} height={34} priority />
-          <span>DETAILENGINE</span>
+          <Image src="/brand/detailengine-horizontal-graphite.svg" alt="DetailEngine" width={220} height={40} priority />
         </div>
         <span className={styles.pageName}>New client setup</span>
       </header>
