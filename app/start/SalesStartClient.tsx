@@ -105,7 +105,7 @@ export function SalesStartClient({
     const next = Number(isSetup ? feeDraft : retainerDraft);
     if (!Number.isInteger(next) || next < 1 || next > 100000) {
       setError(
-        `Enter a whole-dollar ${isSetup ? "setup fee" : "retainer"} between $1 and $100,000 USD.`,
+        `Enter a whole-dollar ${isSetup ? "setup fee" : "management fee"} between $1 and $100,000 USD.`,
       );
       return;
     }
@@ -348,13 +348,13 @@ export function SalesStartClient({
               <div>
                 <span className={styles.stepLabel}>AMOUNT IN USD</span>
                 <h2 id="amount-editor-title">
-                  Edit {editingAmount === "setup" ? "setup fee" : "retainer"}
+                  Edit {editingAmount === "setup" ? "setup fee" : "management fee"}
                 </h2>
               </div>
               <button className={styles.modalClose} type="button" onClick={closeAmountEditor} aria-label="Close amount editor">×</button>
             </div>
             <AmountEditor
-              label={editingAmount === "setup" ? "Setup & implementation" : "Retainer per completed cycle"}
+              label={editingAmount === "setup" ? "Setup Fee" : "Management Fee"}
               value={editingAmount === "setup" ? feeDraft : retainerDraft}
               onChange={editingAmount === "setup" ? setFeeDraft : setRetainerDraft}
               onSave={saveAmount}
@@ -579,21 +579,21 @@ export function SalesStartClient({
                 <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
                 <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
               </div>
-              <p className={styles.feeTiming}>
-                <strong>Retainer not due today</strong> — charged only after at least 28 days have passed <em>and</em> the full goal has been reached.
-              </p>
-              <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit retainer per completed cycle">
-                <span>Retainer per completed cycle</span><strong>{formatSetupFee(retainer)} USD</strong>
-              </button>
-              <div className={styles.feeTiming}>
-                <strong>Setup fee due today</strong> — a one-time fee to cover setup, including:
-                <ul className={styles.feeIncludes}>
-                  <li>Client onboarding and account configuration</li>
-                  <li>Tracking and required platform integrations</li>
-                  <li>Initial campaign build and launch preparation</li>
-                </ul>
-              </div>
+              <h2 className={styles.paymentTimingHeading}>Paid Today:</h2>
               <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
+              <p className={styles.feeDescription}>
+                A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins. It is separate from the management fee, advertising-spend fee, and advertising costs paid directly to the platform.
+              </p>
+
+              <h2 className={styles.paymentTimingHeading}>
+                Paid consecutively after the 28-day billing cycle has passed <em>AND</em> the full target is reached:
+              </h2>
+              <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
+                <span>Management Fee</span><strong>{formatSetupFee(retainer)} USD</strong>
+              </button>
+              <p className={styles.feeDescription}>
+                The full management fee is due only after both conditions are met. If the full target is not reached by day 28, the same billing cycle stays open until the target is reached or the agreement is cancelled. Cancellation during an open cycle is settled under the agreement&apos;s prorated-fee terms.
+              </p>
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -613,15 +613,15 @@ export function SalesStartClient({
 function OrderSummary({ amountCad, onEdit }: { amountCad: number; onEdit?: () => void }) {
   if (onEdit) {
     return (
-      <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup and implementation fee">
-        <span>Setup &amp; implementation</span>
+      <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup fee">
+        <span>Setup Fee</span>
         <strong>{formatSetupFee(amountCad)} USD</strong>
       </button>
     );
   }
   return (
     <div className={styles.order}>
-      <span>Setup &amp; implementation</span>
+      <span>Setup Fee</span>
       <strong>{formatSetupFee(amountCad)} USD</strong>
     </div>
   );

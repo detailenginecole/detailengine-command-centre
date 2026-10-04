@@ -228,43 +228,27 @@
   transform: translateY(0);
 }
 
-.feeTiming {
-  margin: 2px 0 -8px;
-  color: #4f4b44;
-  font-size: 14px;
-  line-height: 1.55;
+.paymentTimingHeading {
+  max-width: 640px;
+  margin: 10px auto -6px;
+  color: #171714;
+  text-align: center;
+  font-size: clamp(20px, 3vw, 25px);
+  font-weight: 900;
+  letter-spacing: -.025em;
+  line-height: 1.25;
 }
 
-.feeTiming strong {
-  color: #171714;
-}
-
-.feeTiming em {
-  color: #171714;
+.paymentTimingHeading em {
   font-style: normal;
-  font-weight: 850;
   text-transform: uppercase;
 }
 
-.feeIncludes {
-  display: grid;
-  gap: 3px;
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.feeIncludes li {
-  position: relative;
-  padding-left: 17px;
-}
-
-.feeIncludes li::before {
-  position: absolute;
-  left: 1px;
-  color: #d45621;
-  content: "•";
-  font-weight: 900;
+.feeDescription {
+  margin: -7px 0 4px;
+  color: #4f4b44;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .order span {
