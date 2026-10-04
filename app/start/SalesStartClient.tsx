@@ -587,7 +587,7 @@ export function SalesStartClient({
 
               <h2 className={styles.paymentTimingHeading}>Paid Later</h2>
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
-                <span>Management Fee</span><strong>{formatSetupFee(retainer)} USD</strong>
+                <span>Management Fee (recurring)</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
               <p className={styles.feeDescription}>
                 The full management fee is due only after both conditions are met. If the full target is not reached by day 28, the same billing cycle stays open until the target is reached or the agreement is cancelled. Cancellation during an open cycle is settled under the agreement&apos;s prorated-fee terms.
@@ -612,14 +612,14 @@ function OrderSummary({ amountCad, onEdit }: { amountCad: number; onEdit?: () =>
   if (onEdit) {
     return (
       <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup fee">
-        <span>Setup Fee</span>
+        <span>Setup Fee (paid once)</span>
         <strong>{formatSetupFee(amountCad)} USD</strong>
       </button>
     );
   }
   return (
     <div className={styles.order}>
-      <span>Setup Fee</span>
+      <span>Setup Fee (paid once)</span>
       <strong>{formatSetupFee(amountCad)} USD</strong>
     </div>
   );
