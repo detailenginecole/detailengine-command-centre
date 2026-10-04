@@ -251,6 +251,17 @@
   line-height: 1.55;
 }
 
+.feeDescription p {
+  margin: 0;
+}
+
+.feeList {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding-left: 22px;
+}
+
 .order span {
   font-size: 13px;
   font-weight: 750;
