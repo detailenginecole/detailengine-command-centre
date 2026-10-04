@@ -581,11 +581,21 @@ export function SalesStartClient({
               </div>
               <h2 className={styles.paymentTimingHeading}>Paid Today:</h2>
               <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
-              <p className={styles.feeDescription}>
-                A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins. It is separate from the management fee, advertising-spend fee, and advertising costs paid directly to the platform.
-              </p>
+              <div className={styles.feeDescription}>
+                <p>A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins:</p>
+                <ul className={styles.feeList}>
+                  <li>Plan, build, and test the initial Meta campaigns</li>
+                  <li>Configure or optimize Meta Business Manager and Facebook Page access</li>
+                  <li>Set up audiences and retargeting</li>
+                  <li>Configure lead capture and text and email follow-up</li>
+                  <li>Set up qualification, transfer, and call-handling workflows</li>
+                  <li>Connect tracking and reporting</li>
+                  <li>Prepare the initial campaign copy, creative, ads, and launch data</li>
+                </ul>
+                <p>Advertising spend, the ongoing management fee, the 10% advertising-spend fee, and advertising charges paid directly to the platform are separate.</p>
+              </div>
 
-              <h2 className={styles.paymentTimingHeading}>Paid Later</h2>
+              <h2 className={styles.paymentTimingHeading}>Paid Later:</h2>
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
                 <span>Management Fee (recurring)</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
