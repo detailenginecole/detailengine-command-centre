@@ -30,3 +30,13 @@ input::placeholder,textarea::placeholder{color:#5B626D;opacity:1}
 .range-control,.report-buttons button,.outline-button{box-shadow:none;border-color:#CAD0D7;border-width:1px}
 @media(max-width:600px){.topbar .brand img,.setup-topbar img{width:170px}.auth-page{padding:20px}.auth-card{padding:28px}.section-heading h2{font-size:28px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Solid surfaces and centered slogan-free site identity. */
+.login-brand{display:flex;justify-content:center;width:100%}
+.login-brand img{display:block;margin-inline:auto;object-fit:contain}
+.auth-card>img{justify-self:center;margin-inline:auto;object-fit:contain}
+:root{--blue:#D62329;--blue-pale:#E9EDF1}
+.company-hero,.greg-hero,.greg-goals,.manage-empty,.unified-ads-manager,.ads-console-heading,.unified-ads-manager .greg-goals{background:#fff}
+.tone-yellow{background:#E9EDF1}
+.meter i,.portfolio-chart i,.trend-bars i,.accounts-greeting>i{background:#D62329}
+.cycle-goal-bonus::before{display:none;animation:none}
