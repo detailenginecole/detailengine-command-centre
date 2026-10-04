@@ -582,7 +582,7 @@ export function SalesStartClient({
               <h2 className={styles.paymentTimingHeading}>Paid Today:</h2>
               <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
               <p className={styles.feeDescription}>
-                A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins. It is separate from the management fee, advertising-spend fee, and advertising costs paid directly to the platform.
+                A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins. It includes planning, building, and testing the initial Meta campaigns; configuring or optimizing Meta Business Manager and Facebook Page access; setting up audiences and retargeting; configuring lead capture, text and email follow-up, qualification, and transfer workflows; connecting call handling, tracking, and reporting; and preparing the initial campaign copy, creative, ads, and launch data. Advertising spend, the ongoing management fee, the 10% advertising-spend fee, and advertising charges paid directly to the platform are separate.
               </p>
 
               <h2 className={styles.paymentTimingHeading}>
