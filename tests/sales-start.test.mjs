@@ -42,7 +42,7 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /formatSetupFee\(amountCad\)\} USD/);
   assert.match(client, /aria-modal="true"/);
   assert.match(client, /Paid Today:/);
-  assert.match(client, /Pay Later/);
+  assert.match(client, /Paid Later/);
   assert.match(client, /initial preparation and setup before work begins/);
   assert.match(client, /Cancellation during an open cycle is settled under the agreement/);
   assert.doesNotMatch(client, /Client onboarding and account configuration/);
