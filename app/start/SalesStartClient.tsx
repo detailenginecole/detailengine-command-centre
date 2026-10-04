@@ -615,14 +615,14 @@ function OrderSummary({ amountCad, onEdit }: { amountCad: number; onEdit?: () =>
     return (
       <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup and implementation fee">
         <span>Setup &amp; implementation</span>
-        <strong>{formatSetupFee(amountCad)}</strong>
+        <strong>{formatSetupFee(amountCad)} USD</strong>
       </button>
     );
   }
   return (
     <div className={styles.order}>
       <span>Setup &amp; implementation</span>
-      <strong>{formatSetupFee(amountCad)}</strong>
+      <strong>{formatSetupFee(amountCad)} USD</strong>
     </div>
   );
 }

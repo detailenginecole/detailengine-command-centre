@@ -108,6 +108,7 @@ values from $1 through $100,000 before Checkout is created. The form states
 that the retainer is due only after at least 28 days and full-goal completion,
 while the setup fee is due today for onboarding/account configuration,
 tracking/integrations, and initial campaign build/launch preparation. Staff can
+see `USD` beside both amount summaries throughout the Start flow. They can
 either open Checkout inside the page with Stripe.js or create a client-specific
 Stripe-hosted payment link to copy, email or open. In both paths, card data is
 entered inside Stripe's UI and never reaches DetailEngine's application servers.

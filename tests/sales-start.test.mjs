@@ -39,6 +39,7 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.doesNotMatch(client, /styles\.settingsPanel/);
   assert.match(client, /aria-label="Edit retainer per completed cycle"/);
   assert.match(client, /aria-label="Edit setup and implementation fee"/);
+  assert.match(client, /formatSetupFee\(amountCad\)\} USD/);
   assert.match(client, /aria-modal="true"/);
   assert.match(client, /Retainer not due today/);
   assert.match(client, /at least 28 days have passed/);
