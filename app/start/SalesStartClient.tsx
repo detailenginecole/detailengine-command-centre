@@ -605,9 +605,14 @@ export function SalesStartClient({
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
                 <span>Management Fee (recurring, paid to DetailEngine)</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
-              <p className={styles.feeDescription}>
-                The full management fee is due only after both conditions are met. If the full target is not reached by day 28, the same billing cycle stays open until the target is reached or the agreement is cancelled. Cancellation during an open cycle is settled under the agreement&apos;s prorated-fee terms.
-              </p>
+              <div className={styles.feeDescription}>
+                <ul className={styles.feeList}>
+                  <li>Each cycle runs for at least 28 days</li>
+                  <li>The full management fee is due only after 28 days have passed and the full target has been reached</li>
+                  <li>If the target is not reached by day 28, the same cycle stays open until the target is reached or the client cancels</li>
+                  <li>If the client cancels during an open cycle, the management fee is prorated by progress toward the target and capped at the full management fee</li>
+                </ul>
+              </div>
 
               <div className={styles.adSpendBlock}>
                 <div className={styles.order}>
