@@ -37,19 +37,16 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /setup_amount_minor: setupFeeCad \* 100/);
   assert.doesNotMatch(client, /aria-label="Settings"/);
   assert.doesNotMatch(client, /styles\.settingsPanel/);
-  assert.match(client, /aria-label="Edit retainer per completed cycle"/);
-  assert.match(client, /aria-label="Edit setup and implementation fee"/);
+  assert.match(client, /aria-label="Edit management fee"/);
+  assert.match(client, /aria-label="Edit setup fee"/);
   assert.match(client, /formatSetupFee\(amountCad\)\} USD/);
   assert.match(client, /aria-modal="true"/);
-  assert.match(client, /Retainer not due today/);
-  assert.match(client, /at least 28 days have passed/);
-  assert.match(client, /the full goal has been reached/);
-  assert.match(client, /Setup fee due today/);
-  for (const setupItem of [
-    "Client onboarding and account configuration",
-    "Tracking and required platform integrations",
-    "Initial campaign build and launch preparation",
-  ]) assert.match(client, new RegExp(setupItem));
+  assert.match(client, /Paid Today:/);
+  assert.match(client, /Paid consecutively after the 28-day billing cycle has passed/);
+  assert.match(client, /initial preparation and setup before work begins/);
+  assert.match(client, /Cancellation during an open cycle is settled under the agreement/);
+  assert.doesNotMatch(client, /Client onboarding and account configuration/);
+  assert.doesNotMatch(client, /Tracking and required platform integrations/);
   assert.match(client, /editingAmount === "setup"/);
   assert.match(client, /if \(isSetup\) setSetupFeeCad\(next\)/);
   assert.match(client, /else setRetainer\(next\)/);
