@@ -584,13 +584,12 @@ export function SalesStartClient({
               <div className={styles.feeDescription}>
                 <p>A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins:</p>
                 <ul className={styles.feeList}>
-                  <li>Plan, build, and test the initial Meta campaigns</li>
-                  <li>Configure or optimize Meta Business Manager and Facebook Page access</li>
-                  <li>Set up audiences and retargeting</li>
-                  <li>Configure lead capture and text and email follow-up</li>
-                  <li>Set up qualification, transfer, and call-handling workflows</li>
-                  <li>Connect tracking and reporting</li>
-                  <li>Prepare the initial campaign copy, creative, ads, and launch data</li>
+                  <li>Market research</li>
+                  <li>Campaign development</li>
+                  <li>Creative development</li>
+                  <li>Domain configuration</li>
+                  <li>Landing page development</li>
+                  <li>Internal training</li>
                 </ul>
                 <p>Advertising spend, the ongoing management fee, the 10% advertising-spend fee, and advertising charges paid directly to the platform are separate.</p>
               </div>
