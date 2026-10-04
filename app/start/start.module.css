@@ -228,6 +228,45 @@
   transform: translateY(0);
 }
 
+.feeTiming {
+  margin: 2px 0 -8px;
+  color: #4f4b44;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.feeTiming strong {
+  color: #171714;
+}
+
+.feeTiming em {
+  color: #171714;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.feeIncludes {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feeIncludes li {
+  position: relative;
+  padding-left: 17px;
+}
+
+.feeIncludes li::before {
+  position: absolute;
+  left: 1px;
+  color: #d45621;
+  content: "•";
+  font-weight: 900;
+}
+
 .order span {
   font-size: 13px;
   font-weight: 750;

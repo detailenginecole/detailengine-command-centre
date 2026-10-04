@@ -40,6 +40,15 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /aria-label="Edit retainer per completed cycle"/);
   assert.match(client, /aria-label="Edit setup and implementation fee"/);
   assert.match(client, /aria-modal="true"/);
+  assert.match(client, /Retainer not due today/);
+  assert.match(client, /at least 28 days have passed/);
+  assert.match(client, /the full goal has been reached/);
+  assert.match(client, /Setup fee due today/);
+  for (const setupItem of [
+    "Client onboarding and account configuration",
+    "Tracking and required platform integrations",
+    "Initial campaign build and launch preparation",
+  ]) assert.match(client, new RegExp(setupItem));
   assert.match(client, /editingAmount === "setup"/);
   assert.match(client, /if \(isSetup\) setSetupFeeCad\(next\)/);
   assert.match(client, /else setRetainer\(next\)/);

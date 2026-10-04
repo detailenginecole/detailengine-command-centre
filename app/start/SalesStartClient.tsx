@@ -579,10 +579,20 @@ export function SalesStartClient({
                 <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
                 <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
               </div>
+              <p className={styles.feeTiming}>
+                <strong>Retainer not due today</strong> — charged only after at least 28 days have passed <em>and</em> the full goal has been reached.
+              </p>
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit retainer per completed cycle">
                 <span>Retainer per completed cycle</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
-              <p>The retainer is not charged with setup. The client signs the agreement at the end of onboarding.</p>
+              <div className={styles.feeTiming}>
+                <strong>Setup fee due today</strong> — a one-time fee to cover setup, including:
+                <ul className={styles.feeIncludes}>
+                  <li>Client onboarding and account configuration</li>
+                  <li>Tracking and required platform integrations</li>
+                  <li>Initial campaign build and launch preparation</li>
+                </ul>
+              </div>
               <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
 
               {error && <div className={styles.error} role="alert">{error}</div>}
