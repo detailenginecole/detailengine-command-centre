@@ -44,7 +44,7 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /Paid Today:/);
   assert.match(client, /Paid Later:/);
   assert.match(client, /initial preparation and setup before work begins/);
-  assert.match(client, /Cancellation during an open cycle is settled under the agreement/);
+  assert.match(client, /management fee is prorated by progress toward the target/);
   assert.doesNotMatch(client, /Client onboarding and account configuration/);
   assert.doesNotMatch(client, /Tracking and required platform integrations/);
   assert.match(client, /editingAmount === "setup"/);
