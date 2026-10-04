@@ -551,42 +551,12 @@ export function SalesStartClient({
           <>
             <div className={styles.sectionHeading}>
               <div>
-                <h1>Client details</h1>
-                <p>Enter the information for the new client.</p>
+                <h1>Payment information</h1>
+                <p>Review the amounts and payment rules for the new client.</p>
               </div>
             </div>
 
             <form onSubmit={continueToPayment} className={styles.form}>
-              <label>
-                <span>Legal business name</span>
-                <input
-                  autoFocus
-                  required
-                  maxLength={160}
-                  autoComplete="organization"
-                  value={form.businessName}
-                  onChange={(event) => update("businessName", event.target.value)}
-                />
-              </label>
-
-              <div className={styles.row}>
-                <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
-                <label><span>Formation state / jurisdiction</span><input required maxLength={120} value={form.jurisdiction} onChange={e => update("jurisdiction", e.target.value)} /></label>
-              </div>
-              <div className={styles.row}>
-                <label>
-                  <span>Client full name</span>
-                  <input required maxLength={120} autoComplete="name" value={form.fullName} onChange={(event) => update("fullName", event.target.value)} />
-                </label>
-                <label>
-                  <span>Client email</span>
-                  <input required maxLength={254} type="email" autoComplete="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
-                </label>
-              </div>
-              <div className={styles.row}>
-                <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
-                <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
-              </div>
               <h2 className={styles.paymentTimingHeading}>Paid Today:</h2>
               <OrderSummary amountCad={setupFeeCad} onEdit={() => openAmountEditor("setup")} />
               <div className={styles.feeDescription}>
@@ -621,6 +591,35 @@ export function SalesStartClient({
                 <p className={styles.feeDescription}>
                   This is the maximum advertising spend for a 28-day cycle, calculated from the daily budget above. It is paid to Meta as the cost of placing ads on its platform; actual spend may be lower.
                 </p>
+              </div>
+
+              <div className={styles.formSectionHeading}>
+                <h2>Client details</h2>
+                <p>Enter the information for the new client.</p>
+              </div>
+
+              <label>
+                <span>Legal business name</span>
+                <input required maxLength={160} autoComplete="organization" value={form.businessName} onChange={(event) => update("businessName", event.target.value)} />
+              </label>
+
+              <div className={styles.row}>
+                <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
+                <label><span>Formation state / jurisdiction</span><input required maxLength={120} value={form.jurisdiction} onChange={e => update("jurisdiction", e.target.value)} /></label>
+              </div>
+              <div className={styles.row}>
+                <label>
+                  <span>Client full name</span>
+                  <input required maxLength={120} autoComplete="name" value={form.fullName} onChange={(event) => update("fullName", event.target.value)} />
+                </label>
+                <label>
+                  <span>Client email</span>
+                  <input required maxLength={254} type="email" autoComplete="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
+                </label>
+              </div>
+              <div className={styles.row}>
+                <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
+                <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
               </div>
 
               {error && <div className={styles.error} role="alert">{error}</div>}

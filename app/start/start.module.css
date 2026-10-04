@@ -273,6 +273,28 @@
   margin: 0;
 }
 
+.formSectionHeading {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid #e3ddd2;
+}
+
+.formSectionHeading h2,
+.formSectionHeading p {
+  margin: 0;
+}
+
+.formSectionHeading h2 {
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.formSectionHeading p {
+  margin-top: 4px;
+  color: #6d685f;
+  font-size: 13px;
+}
+
 .order span {
   font-size: 13px;
   font-weight: 750;
