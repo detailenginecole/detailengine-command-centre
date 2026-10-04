@@ -263,6 +263,16 @@
   list-style: disc outside;
 }
 
+.adSpendBlock {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.adSpendBlock .feeDescription {
+  margin: 0;
+}
+
 .order span {
   font-size: 13px;
   font-weight: 750;

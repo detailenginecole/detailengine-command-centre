@@ -56,7 +56,11 @@ const previewCheckoutUrl =
 const defaultSetupFeeCad = 1000;
 
 function formatSetupFee(amountCad: number) {
-  return `$${amountCad.toLocaleString("en-CA")}`;
+  return `${amountCad.toLocaleString("en-CA")}`;
+}
+
+function formatAdSpend(amountUsd: number) {
+  return `${amountUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
 export function SalesStartClient({
@@ -87,6 +91,10 @@ export function SalesStartClient({
   const [error, setError] = useState("");
   const checkoutHost = useRef<HTMLDivElement>(null);
   const checkoutInstance = useRef<EmbeddedCheckout | null>(null);
+  const dailyBudget = Number(form.dailyBudget);
+  const maximum28DayAdSpend = Number.isFinite(dailyBudget) && dailyBudget > 0
+    ? dailyBudget * 28
+    : 0;
 
   function update(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -591,16 +599,24 @@ export function SalesStartClient({
                   <li>Landing page development</li>
                   <li>Internal training</li>
                 </ul>
-                <p>Advertising spend, the ongoing management fee, the 10% advertising-spend fee, and advertising charges paid directly to the platform are separate.</p>
               </div>
 
               <h2 className={styles.paymentTimingHeading}>Paid Later:</h2>
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
-                <span>Management Fee (recurring)</span><strong>{formatSetupFee(retainer)} USD</strong>
+                <span>Management Fee (recurring, paid to DetailEngine)</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
               <p className={styles.feeDescription}>
                 The full management fee is due only after both conditions are met. If the full target is not reached by day 28, the same billing cycle stays open until the target is reached or the agreement is cancelled. Cancellation during an open cycle is settled under the agreement&apos;s prorated-fee terms.
               </p>
+
+              <div className={styles.adSpendBlock}>
+                <div className={styles.order}>
+                  <span>Ad Spend (Recurring, paid to Meta)</span><strong>{formatAdSpend(maximum28DayAdSpend)} USD</strong>
+                </div>
+                <p className={styles.feeDescription}>
+                  This is the maximum advertising spend for a 28-day cycle, calculated from the daily budget above. It is paid to Meta as the cost of placing ads on its platform; actual spend may be lower.
+                </p>
+              </div>
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -621,14 +637,14 @@ function OrderSummary({ amountCad, onEdit }: { amountCad: number; onEdit?: () =>
   if (onEdit) {
     return (
       <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={onEdit} aria-label="Edit setup fee">
-        <span>Setup Fee (paid once)</span>
+        <span>Setup Fee (paid once, paid to DetailEngine)</span>
         <strong>{formatSetupFee(amountCad)} USD</strong>
       </button>
     );
   }
   return (
     <div className={styles.order}>
-      <span>Setup Fee (paid once)</span>
+      <span>Setup Fee (paid once, paid to DetailEngine)</span>
       <strong>{formatSetupFee(amountCad)} USD</strong>
     </div>
   );
