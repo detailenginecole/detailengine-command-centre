@@ -585,7 +585,7 @@ export function SalesStartClient({
                 A one-time, non-refundable fee covering DetailEngine&apos;s initial preparation and setup before work begins. It is separate from the management fee, advertising-spend fee, and advertising costs paid directly to the platform.
               </p>
 
-              <h2 className={styles.paymentTimingHeading}>Pay Later</h2>
+              <h2 className={styles.paymentTimingHeading}>Paid Later</h2>
               <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("retainer")} aria-label="Edit management fee">
                 <span>Management Fee</span><strong>{formatSetupFee(retainer)} USD</strong>
               </button>
