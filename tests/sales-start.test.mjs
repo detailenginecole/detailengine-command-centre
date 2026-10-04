@@ -50,7 +50,9 @@ test("sales UI collects client context and delegates card data to Stripe", () =>
   assert.match(client, /editingAmount === "setup"/);
   assert.match(client, /if \(isSetup\) setSetupFeeCad\(next\)/);
   assert.match(client, /else setRetainer\(next\)/);
-  assert.ok(client.includes('return `$${amountCad.toLocaleString("en-CA")}`;'));
+  const formatBody = client.match(/function formatSetupFee\(amountCad: number\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(formatBody);
+  assert.equal(new Function("amountCad", formatBody)(1000), "$1,000");
   assert.doesNotMatch(client, /CAD/);
   assert.doesNotMatch(client, />\s*Adjust\s*</);
   assert.match(client, /formatSetupFee\(setupFeeCad\)/);

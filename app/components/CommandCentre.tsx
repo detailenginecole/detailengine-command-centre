@@ -123,7 +123,7 @@ function Shell({ screen, children, user, notifications, mobileOpen, setMobileOpe
   return <main className="app-shell">
     <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
       <Link className="brand" href="/" aria-label="DetailEngine home">
-        <Image src="/detailengine-logo.png" alt="DetailEngine" width={1122} height={598} sizes="174px" priority />
+        <Image src="/brand/detailengine-horizontal-white.svg" alt="DetailEngine" width={1200} height={220} sizes="174px" priority />
       </Link>
       <nav aria-label="Main navigation">{nav.map((item) => <Link key={item.id} href={item.href} className={screen === item.id || (screen === "account" && item.id === "accounts") ? "active" : ""}><b>{item.icon}</b><span>{item.label}</span></Link>)}<button className="notification-button" type="button" onClick={() => setNotificationOpen((value) => !value)}><b>♢</b><span>Notifications</span>{unread ? <i>{unread}</i> : null}</button></nav>
       {notificationOpen ? <section className="notification-popover"><header><strong>Notifications</strong><span>{unread} unread</span></header>{items.length ? items.map((item) => <button key={item.id} className={item.read_at ? "" : "unread"} onClick={() => openNotification(item)}><strong>{item.title}</strong><span>{item.body}</span><small>{dateTime(item.created_at)}</small></button>) : <p>No reply notifications yet.</p>}</section> : null}

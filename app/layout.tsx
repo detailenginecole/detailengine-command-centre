@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { headers } from "next/headers";
 import "./globals.css";
+import "./brand-v1.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+
+const barlow = localFont({ src: [
+  { path: "../public/fonts/Barlow-Regular.ttf", weight: "400", style: "normal" },
+  { path: "../public/fonts/Barlow-Medium.ttf", weight: "500", style: "normal" },
+  { path: "../public/fonts/Barlow-SemiBold.ttf", weight: "600", style: "normal" },
+  { path: "../public/fonts/Barlow-Bold.ttf", weight: "700", style: "normal" },
+], variable: "--font-barlow", display: "swap" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const incoming = await headers();
@@ -37,13 +37,13 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: [{ url: `${origin}/og-command-centre-v2.png`, width: 1536, height: 1024 }],
+      images: [{ url: `${origin}/og-brand-v1.png`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [`${origin}/og-command-centre-v2.png`],
+      images: [`${origin}/og-brand-v1.png`],
     },
   };
 }
@@ -51,7 +51,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
+      <body className={barlow.variable}>{children}</body>
     </html>
   );
 }
