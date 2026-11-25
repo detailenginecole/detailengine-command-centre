@@ -7,7 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import styles from "./start.module.css";
 
 type PaymentMode = "embedded" | "hosted";
-type EditableAmount = "setup" | "retainer";
+type EditableAmount = "setup" | "retainer" | "budget";
 
 type CheckoutResult = {
   checkout_client_secret?: string;
@@ -88,6 +88,7 @@ export function SalesStartClient({
   const [editingAmount, setEditingAmount] = useState<EditableAmount | null>(null);
   const [retainer, setRetainer] = useState(2500);
   const [retainerDraft, setRetainerDraft] = useState("2500");
+  const [budgetDraft, setBudgetDraft] = useState("");
   const [error, setError] = useState("");
   const checkoutHost = useRef<HTMLDivElement>(null);
   const checkoutInstance = useRef<EmbeddedCheckout | null>(null);
@@ -103,12 +104,23 @@ export function SalesStartClient({
 
   function openAmountEditor(amount: EditableAmount) {
     if (amount === "setup") setFeeDraft(String(setupFeeCad));
+    else if (amount === "budget") setBudgetDraft(form.dailyBudget);
     else setRetainerDraft(String(retainer));
     setEditingAmount(amount);
     setError("");
   }
 
   function saveAmount() {
+    if (editingAmount === "budget") {
+      const next = Number(budgetDraft);
+      if (!Number.isFinite(next) || next < 0.01 || next > 100000 || Math.abs(next * 100 - Math.round(next * 100)) > 0.000001) {
+        setError("Enter a daily advertising budget between $0.01 and $100,000 USD, with no more than two decimal places.");
+        return;
+      }
+      update("dailyBudget", String(next));
+      setEditingAmount(null);
+      return;
+    }
     const isSetup = editingAmount === "setup";
     const next = Number(isSetup ? feeDraft : retainerDraft);
     if (!Number.isInteger(next) || next < 1 || next > 100000) {
@@ -355,18 +367,21 @@ export function SalesStartClient({
               <div>
                 <span className={styles.stepLabel}>AMOUNT IN USD</span>
                 <h2 id="amount-editor-title">
-                  Edit {editingAmount === "setup" ? "setup fee" : "management fee"}
+                  Edit {editingAmount === "setup" ? "setup fee" : editingAmount === "budget" ? "daily ad spend" : "management fee"}
                 </h2>
               </div>
               <button className={styles.modalClose} type="button" onClick={closeAmountEditor} aria-label="Close amount editor">×</button>
             </div>
             <AmountEditor
-              label={editingAmount === "setup" ? "Setup Fee" : "Management Fee"}
-              value={editingAmount === "setup" ? feeDraft : retainerDraft}
-              onChange={editingAmount === "setup" ? setFeeDraft : setRetainerDraft}
+              label={editingAmount === "setup" ? "Setup Fee" : editingAmount === "budget" ? "Daily advertising budget (USD)" : "Management Fee"}
+              value={editingAmount === "setup" ? feeDraft : editingAmount === "budget" ? budgetDraft : retainerDraft}
+              onChange={editingAmount === "setup" ? setFeeDraft : editingAmount === "budget" ? setBudgetDraft : setRetainerDraft}
+              min={editingAmount === "budget" ? 0.01 : 1}
+              step={editingAmount === "budget" ? 0.01 : 1}
               onSave={saveAmount}
               onCancel={closeAmountEditor}
             />
+            {editingAmount === "budget" && <p className={styles.budgetPreview}>{formatAdSpend(Number(budgetDraft) > 0 && Number.isFinite(Number(budgetDraft)) ? Number(budgetDraft) * 28 : 0)} USD per 28-day cycle</p>}
             {error && <div className={styles.error} role="alert">{error}</div>}
           </div>
         </div>
@@ -584,11 +599,15 @@ export function SalesStartClient({
               </div>
 
               <div className={styles.adSpendBlock}>
-                <div className={styles.order}>
-                  <span>Ad Spend (Recurring, paid to Meta)</span><strong>{formatAdSpend(maximum28DayAdSpend)} USD</strong>
-                </div>
+                <button className={`${styles.order} ${styles.editableOrder}`} type="button" onClick={() => openAmountEditor("budget")} aria-label="Edit daily ad spend">
+                  <span>Ad Spend (Recurring, paid to Meta)</span>
+                  <span className={styles.adSpendAmounts}>
+                    <strong>{formatAdSpend(dailyBudget || 0)} USD / day</strong>
+                    <small>{formatAdSpend(maximum28DayAdSpend)} USD / 28-day cycle</small>
+                  </span>
+                </button>
                 <p className={styles.feeDescription}>
-                  This is the maximum advertising spend for a 28-day cycle, calculated from the daily budget above. It is paid to Meta as the cost of placing ads on its platform; actual spend may be lower.
+                  Cycle spend is the daily budget multiplied by 28. It is paid to Meta as the cost of placing ads on its platform; actual spend may be lower.
                 </p>
               </div>
 
@@ -602,11 +621,8 @@ export function SalesStartClient({
                 <input required maxLength={160} autoComplete="organization" value={form.businessName} onChange={(event) => update("businessName", event.target.value)} />
               </label>
 
-              <div className={styles.row}>
                 <label><span>Business entity type</span><input required maxLength={80} placeholder="LLC, corporation, sole proprietor" value={form.entityType} onChange={e => update("entityType", e.target.value)} /></label>
                 <label><span>Formation state / jurisdiction</span><input required maxLength={120} value={form.jurisdiction} onChange={e => update("jurisdiction", e.target.value)} /></label>
-              </div>
-              <div className={styles.row}>
                 <label>
                   <span>Client full name</span>
                   <input required maxLength={120} autoComplete="name" value={form.fullName} onChange={(event) => update("fullName", event.target.value)} />
@@ -615,11 +631,7 @@ export function SalesStartClient({
                   <span>Client email</span>
                   <input required maxLength={254} type="email" autoComplete="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
                 </label>
-              </div>
-              <div className={styles.row}>
                 <label><span>Transfer opportunity goal</span><input required type="number" min={1} max={1000000} step={1} inputMode="numeric" value={form.opportunityGoal} onChange={e => update("opportunityGoal", e.target.value)} /></label>
-                <label><span>Daily advertising budget (USD)</span><input required type="number" min={0.01} max={100000} step={0.01} inputMode="decimal" value={form.dailyBudget} onChange={e => update("dailyBudget", e.target.value)} /></label>
-              </div>
 
               {error && <div className={styles.error} role="alert">{error}</div>}
 
@@ -659,12 +671,16 @@ function AmountEditor({
   onChange,
   onSave,
   onCancel,
+  min = 1,
+  step = 1,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  min?: number;
+  step?: number;
 }) {
   return (
     <form className={styles.feeEditor} onSubmit={(event) => { event.preventDefault(); onSave(); }}>
@@ -673,10 +689,10 @@ function AmountEditor({
         <input
           autoFocus
           type="number"
-          min={1}
+          min={min}
           max={100000}
-          step={1}
-          inputMode="numeric"
+          step={step}
+          inputMode={step < 1 ? "decimal" : "numeric"}
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
