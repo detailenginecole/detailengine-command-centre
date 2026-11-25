@@ -273,6 +273,23 @@
   margin: 0;
 }
 
+.adSpendAmounts {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.adSpendAmounts small {
+  color: #46515F;
+  font-size: 12px;
+}
+
+.budgetPreview {
+  margin: 14px 0 0;
+  color: #46515F;
+  font-size: 14px;
+}
+
 .formSectionHeading {
   margin-top: 8px;
   padding-top: 20px;

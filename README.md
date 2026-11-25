@@ -157,3 +157,7 @@ The approved non-binding live fixture used fake signatures only. Signing/complet
 ## v1 brand rollout — 2026-10-04
 
 The shared Drive DetailEngine — v1 Brand Kit is the visual source of truth. Layouts self-host Barlow through next/font/local; public/brand contains outlined logo assets, and app/brand-v1.css establishes the shared red/graphite/silver theme, 6px controls and 12px cards. Existing data/auth/payment behavior is preserved. Release verification and email publication status are recorded in the shared PROGRESS_LOG.md.
+
+## Start daily ad spend editor — 2026-11-25
+
+The Ad Spend summary opens the same focused amount editor as the setup and management fees. Enter a daily USD budget; the editor and summary show its 28-day total (daily budget × 28). Save updates the existing dailyBudget form value used by the contract/payment request; Cancel and Escape discard the draft. The duplicate daily-budget field below is removed, and every Client details field occupies its own line. Existing budget limits, currencies, payment processing and contract terms remain unchanged.
